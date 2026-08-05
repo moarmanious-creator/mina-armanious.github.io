@@ -14,7 +14,8 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { Partnership } from '../types/partnership';
-import { getShareablePublishUrl, publishPartnerships } from '../utils/publishUtils';
+import { getLiveShareUrl } from '../utils/publishUtils';
+import { writePartnerships } from '../utils/firebaseSync';
 
 interface PublishModalProps {
   isOpen: boolean;
@@ -36,7 +37,7 @@ export const PublishModal: React.FC<PublishModalProps> = ({
 
   if (!isOpen) return null;
 
-  const currentShareUrl = getShareablePublishUrl(partnerships);
+  const currentShareUrl = getLiveShareUrl();
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(currentShareUrl);
@@ -46,13 +47,24 @@ export const PublishModal: React.FC<PublishModalProps> = ({
 
   const handlePublishNow = async () => {
     setIsPublishing(true);
-    const result = publishPartnerships(partnerships);
-    setCurrentTimestamp(result.timestamp);
-    onPublishedSuccess(result.timestamp);
+    try {
+      await writePartnerships(partnerships);
+    } catch (e) {
+      console.error('Failed to sync changes live:', e);
+    }
+    const timestamp = new Date().toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      month: 'short',
+      day: 'numeric',
+    });
+    setCurrentTimestamp(timestamp);
+    onPublishedSuccess(timestamp);
     setIsPublishing(false);
 
     // Auto copy on explicit publish click
-    navigator.clipboard.writeText(result.shareUrl);
+    navigator.clipboard.writeText(currentShareUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   };
@@ -74,7 +86,7 @@ export const PublishModal: React.FC<PublishModalProps> = ({
                 </span>
               </h2>
               <p className="text-xs text-emerald-100 opacity-90">
-                Anyone opening your shared link will immediately see your latest published changes
+                This link is always live — anyone with it sees every change the moment you make it, no re-sharing needed
               </p>
             </div>
           </div>
@@ -102,7 +114,7 @@ export const PublishModal: React.FC<PublishModalProps> = ({
                 )}
               </p>
               <p className="text-emerald-800 leading-relaxed">
-                Your dataset containing <strong>{partnerships.length} active partnerships</strong> is encoded directly into the share URL payload. Recipients do not need logins or special database access to view the published register.
+                Your dataset containing <strong>{partnerships.length} active partnerships</strong> syncs live for every visitor. Recipients do not need logins or special database access to view the register.
               </p>
             </div>
           </div>
@@ -114,7 +126,7 @@ export const PublishModal: React.FC<PublishModalProps> = ({
                 <Share2 className="w-3.5 h-3.5 text-emerald-600" />
                 Live Published Link
               </span>
-              <span className="text-[11px] text-slate-400 font-normal">URL contains live snapshot state</span>
+              <span className="text-[11px] text-slate-400 font-normal">Same link, always current</span>
             </label>
 
             <div className="flex gap-2">
@@ -153,13 +165,13 @@ export const PublishModal: React.FC<PublishModalProps> = ({
             <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex flex-col items-center text-center">
               <Radio className="w-5 h-5 text-emerald-600 mb-1.5 animate-pulse" />
               <span className="text-xs font-bold text-slate-800">Instant Broadcast</span>
-              <span className="text-[10px] text-slate-500 mt-0.5">Real-time sync across open tabs</span>
+              <span className="text-[10px] text-slate-500 mt-0.5">Real-time sync across every device</span>
             </div>
 
             <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex flex-col items-center text-center">
               <ShieldCheck className="w-5 h-5 text-teal-600 mb-1.5" />
-              <span className="text-xs font-bold text-slate-800">Zero Dependencies</span>
-              <span className="text-[10px] text-slate-500 mt-0.5">Embedded compressed payload</span>
+              <span className="text-xs font-bold text-slate-800">One Fixed Link</span>
+              <span className="text-[10px] text-slate-500 mt-0.5">Never needs to be re-shared</span>
             </div>
 
             <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex flex-col items-center text-center">

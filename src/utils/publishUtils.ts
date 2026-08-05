@@ -2,7 +2,6 @@ import LZString from 'lz-string';
 import { Partnership } from '../types/partnership';
 
 const PUBLISHED_STORAGE_KEY = 'strategic_partnerships_published_v1';
-const BROADCAST_CHANNEL_NAME = 'strategic_partnerships_live_sync';
 
 /**
  * Encodes partnerships array into a compressed URL-safe string
@@ -36,62 +35,22 @@ export const decodePartnershipsFromUrl = (compressed: string): Partnership[] | n
 };
 
 /**
- * Generates the full shareable URL containing the published register snapshot
+ * The plain, permanent link to this app. Since the register syncs live via
+ * Firebase, this bare URL always reflects the current data — no payload
+ * needs to be encoded into it.
  */
-export const getShareablePublishUrl = (partnerships: Partnership[]): string => {
-  const compressed = encodePartnershipsToUrl(partnerships);
-  const baseUrl = `${window.location.origin}${window.location.pathname}`;
-  return `${baseUrl}#published=${compressed}`;
+export const getLiveShareUrl = (): string => {
+  return `${window.location.origin}${window.location.pathname}`;
 };
 
 export const CLIENT_SESSION_ID = Math.random().toString(36).substring(2, 9);
 
 /**
- * Saves published state to LocalStorage and returns the published link
- */
-export const publishPartnerships = (partnerships: Partnership[]): { shareUrl: string; timestamp: string } => {
-  const timestamp = new Date().toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    month: 'short',
-    day: 'numeric',
-  });
-
-  const payload = {
-    timestamp,
-    partnerships,
-  };
-
-  try {
-    localStorage.setItem(PUBLISHED_STORAGE_KEY, JSON.stringify(payload));
-  } catch (e) {
-    console.error('Error saving published state to localStorage:', e);
-  }
-
-  // Update current window URL hash silently without forcing a hard reload
-  const shareUrl = getShareablePublishUrl(partnerships);
-  window.history.replaceState(null, '', shareUrl);
-
-  // Broadcast to other open tabs in real-time
-  try {
-    if ('BroadcastChannel' in window) {
-      const channel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
-      channel.postMessage({ type: 'PUBLISHED_UPDATE', senderId: CLIENT_SESSION_ID, partnerships, timestamp });
-      channel.close();
-    }
-  } catch (e) {
-    console.warn('BroadcastChannel not supported or failed:', e);
-  }
-
-  return { shareUrl, timestamp };
-};
-
-/**
- * Reads published state from URL or LocalStorage
+ * Reads a one-time snapshot from a legacy #published=... link, if present.
+ * Used only to seed the live Firebase register when someone opens an old
+ * style share link; ongoing sync happens via Firebase, not this URL payload.
  */
 export const loadInitialPublishedState = (): { data: Partnership[] | null; isFromUrl: boolean } => {
-  // 1. Check URL hash (#published=...) or search params (?published=...)
   const hash = window.location.hash;
   if (hash.includes('published=')) {
     const compressed = hash.split('published=')[1];
@@ -110,7 +69,6 @@ export const loadInitialPublishedState = (): { data: Partnership[] | null; isFro
     }
   }
 
-  // 2. Check local storage published key
   try {
     const saved = localStorage.getItem(PUBLISHED_STORAGE_KEY);
     if (saved) {
