@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Partnership, FilterState, PartnershipStage, PriorityLevel, StrategicValueDrivers, HealthStatus } from './types/partnership';
 import { INITIAL_PARTNERSHIPS, calculateClearancePercentage, calculateDaysToExpiry } from './data/initialPartnerships';
 import { Header } from './components/Header';
@@ -13,12 +13,20 @@ import { PartnershipDetailDrawer } from './components/PartnershipDetailDrawer';
 import { ExportModal } from './components/ExportModal';
 import { PublishModal } from './components/PublishModal';
 import { exportToExcel, exportToPPTX, exportToPDF, exportToCSV } from './utils/exportUtils';
-import { loadInitialPublishedState, publishPartnerships, CLIENT_SESSION_ID } from './utils/publishUtils';
+import { loadInitialPublishedState, CLIENT_SESSION_ID } from './utils/publishUtils';
+import { subscribeToPartnerships, writePartnerships } from './utils/firebaseSync';
 
 const LOCAL_STORAGE_KEY = 'strategic_partnerships_register_data_v1';
 
 export default function App() {
   const [publishedTimestamp, setPublishedTimestamp] = useState<string | null>(null);
+  // Set right before applying a Firebase-originated update, so the auto-save
+  // effect below knows to skip writing it straight back (would loop forever).
+  const isRemoteUpdateRef = useRef(false);
+  // True until the live Firebase subscription has responded at least once.
+  // Blocks the auto-save effect from writing our local/cached data over the
+  // real live register before we actually know what it contains.
+  const isAwaitingFirstSyncRef = useRef(true);
 
   const [partnerships, setPartnerships] = useState<Partnership[]>(() => {
     // 1. Check published URL hash payload or published localStorage
@@ -133,68 +141,77 @@ export default function App() {
     });
   }, [partnerships, filterState]);
 
-  // Initial load: honor a shared #published= link on open
+  // Honor a legacy shared #published= link on open by seeding it into the
+  // live Firebase register, so it becomes the live data for everyone.
   useEffect(() => {
     const publishedState = loadInitialPublishedState();
     if (publishedState.isFromUrl && publishedState.data) {
       setPartnerships(publishedState.data);
+      writePartnerships(publishedState.data).catch((e) =>
+        console.error('Failed to push shared link data live:', e)
+      );
     }
   }, []);
 
-  // Auto-save & broadcast changes to localStorage, URL hash, and other open tabs
+  // Live sync: subscribe to Firebase Realtime Database. Fires immediately
+  // with the current value, then again whenever any connected client
+  // (any tab, any device) writes a change.
+  useEffect(() => {
+    const unsubscribe = subscribeToPartnerships(
+      (remotePartnerships, senderId) => {
+        isAwaitingFirstSyncRef.current = false;
+        if (senderId === CLIENT_SESSION_ID) return; // ignore our own echo
+        isRemoteUpdateRef.current = true;
+        setPartnerships(remotePartnerships);
+        setPublishedTimestamp(
+          new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        );
+      },
+      () => {
+        // Firebase has no data yet (brand new deployment) — seed it with
+        // whatever we're currently showing.
+        isAwaitingFirstSyncRef.current = false;
+        setPartnerships((current) => {
+          writePartnerships(current).catch((e) =>
+            console.error('Failed to seed live register:', e)
+          );
+          return current;
+        });
+      }
+    );
+    return unsubscribe;
+  }, []);
+
+  // Auto-save local changes and push them live to Firebase for every other
+  // open tab/device. Skipped when the change just came *from* Firebase, to
+  // avoid writing it straight back and looping.
   useEffect(() => {
     try {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(partnerships));
-      const pubResult = publishPartnerships(partnerships);
-      if (pubResult.timestamp) {
-        setPublishedTimestamp(pubResult.timestamp);
+
+      if (isRemoteUpdateRef.current) {
+        isRemoteUpdateRef.current = false;
+      } else if (isAwaitingFirstSyncRef.current) {
+        // Don't overwrite the live register with our local/cached copy
+        // before we've heard back from Firebase at least once.
+      } else {
+        writePartnerships(partnerships).catch((e) =>
+          console.error('Failed to sync changes live:', e)
+        );
+        setPublishedTimestamp(
+          new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        );
       }
+
       const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       setLastSavedTime(timeStr);
       setIsJustSaved(true);
       const timer = setTimeout(() => setIsJustSaved(false), 2000);
       return () => clearTimeout(timer);
     } catch (e) {
-      console.error('Failed to auto-save and publish changes:', e);
+      console.error('Failed to auto-save changes:', e);
     }
   }, [partnerships]);
-
-  // Listen for BroadcastChannel events from other tabs of this browser (real-time sync)
-  useEffect(() => {
-    let channel: BroadcastChannel | null = null;
-    try {
-      if ('BroadcastChannel' in window) {
-        channel = new BroadcastChannel('strategic_partnerships_live_sync');
-        channel.onmessage = (event) => {
-          if (
-            event.data &&
-            event.data.type === 'PUBLISHED_UPDATE' &&
-            event.data.senderId !== CLIENT_SESSION_ID &&
-            Array.isArray(event.data.partnerships)
-          ) {
-            setPartnerships(event.data.partnerships);
-            setPublishedTimestamp(event.data.timestamp);
-          }
-        };
-      }
-    } catch (e) {
-      console.warn('BroadcastChannel error:', e);
-    }
-
-    // Also listen to hash changes if recipient navigates or loads via published link
-    const handleHashChange = () => {
-      const publishedState = loadInitialPublishedState();
-      if (publishedState.data) {
-        setPartnerships(publishedState.data);
-      }
-    };
-    window.addEventListener('hashchange', handleHashChange);
-
-    return () => {
-      if (channel) channel.close();
-      window.removeEventListener('hashchange', handleHashChange);
-    };
-  }, []);
 
   // Handlers
   const handleAddNew = () => {
