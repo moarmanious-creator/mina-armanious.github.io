@@ -10,5 +10,10 @@ window.MLEA_CONFIG = {
   // AI study assistant: leave false until the "ai" function is deployed (see README).
   AI_ENABLED: false,
   // Which roles see the assistant. Add "student" to open it to everyone.
-  AI_ROLES: ["admin"]
+  AI_ROLES: ["admin"],
+  // ── MLEA Academic Hub (the /hub app) ──
+  // The Hub's assistant shows a "switched off" note when this is false.
+  HUB_AI_ENABLED: false,
+  // Public address of the Hub; invitation and password-reset emails link here.
+  HUB_SITE_URL: "https://moarmanious-creator.github.io/mina-armanious.github.io/mlea/hub/"
 };
