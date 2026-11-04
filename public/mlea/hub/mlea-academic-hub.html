@@ -3253,7 +3253,11 @@ async function start(session) {
 
 async function boot() {
   if (!configured) {
-    document.body.innerHTML = `<div class="empty" style="padding:60px"><strong>The Hub isn't connected to its database.</strong>Set SUPABASE_URL and SUPABASE_ANON_KEY in config.js.</div>`;
+    const web = "https://moarmanious-creator.github.io/mina-armanious.github.io/mlea/hub/";
+    // A file preview (phone file viewers, mail and chat apps) blocks the sign-in service; point people to the web address.
+    document.body.innerHTML = window.supabase
+      ? `<div class="empty" style="padding:60px"><strong>The Hub isn't connected to its database.</strong>Set SUPABASE_URL and SUPABASE_ANON_KEY in config.js.</div>`
+      : `<div class="empty" style="padding:48px 24px;max-width:520px;margin:0 auto"><strong>Open the Hub in your browser</strong>This preview can't connect to the sign-in service. Open the link below in Safari or Chrome, then use Share → Add to Home Screen to keep it like an app.<p style="margin-top:16px"><a class="btn primary" href="${web}" target="_blank" rel="noopener">Open MLEA Academic Hub</a></p><p class="small muted" style="word-break:break-all">${web}</p><p class="small muted" dir="rtl" lang="ar">المعاينة دي مش بتتصل بالسيرفر. افتح الرابط في Safari أو Chrome، وبعدها مشاركة ← إضافة إلى الشاشة الرئيسية.</p></div>`;
     return;
   }
   wireShell();
