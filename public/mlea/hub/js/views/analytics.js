@@ -1,9 +1,9 @@
 // Personal progress analytics and the "What should I study next?" plan.
-import { esc, fmtDate, fmtMinutes, toast, errToast, cairoToISO, $, $$ } from "../lib.js?v=202611041555";
-import { S, allTasks, saveEvent } from "../store.js?v=202611041555";
-import { programmeStats, recoveryPlan, recommendations, FORMULAS, weeklyActivity } from "../metrics.js?v=202611041555";
-import { cvar, rateRow, chart, courseColor, css, sessionLabel, sessionName, coursePill } from "../ui.js?v=202611041555";
-import { priorityItem } from "./dashboard.js?v=202611041555";
+import { esc, fmtDate, fmtMinutes, toast, errToast, cairoToISO, $, $$ } from "../lib.js?v=202611041915";
+import { S, allTasks, saveEvent } from "../store.js?v=202611041915";
+import { programmeStats, recoveryPlan, recommendations, FORMULAS, weeklyActivity } from "../metrics.js?v=202611041915";
+import { cvar, rateRow, chart, courseColor, css, sessionLabel, sessionName, coursePill } from "../ui.js?v=202611041915";
+import { priorityItem } from "./dashboard.js?v=202611041915";
 
 export function renderAnalytics(view) {
   const st = programmeStats(S, S.today);

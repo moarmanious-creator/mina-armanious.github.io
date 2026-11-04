@@ -1061,6 +1061,44 @@ async function uploadOfficialMaterial(file, meta) {
   }
   return { row, searchable: !!text };
 }
+async function addOfficialLink(meta) {
+  if (!/^https?:\/\//i.test(meta.url || "")) throw new Error("Links must start with http:// or https://");
+  const row = check(await sb.from("shared_materials").insert({ course_id: meta.course_id || null, session_id: meta.session_id || null, kind: "link",
+    title: meta.title || meta.url, description: meta.description || null, url: meta.url, uploaded_by: S.user.id }).select().single());
+  S.materials.push(row);
+  return row;
+}
+// The current official structure from the database, in the same format the importer reads.
+function exportOfficial() {
+  const hm = (t) => (t ? String(t).slice(0, 5) : undefined);
+  const sessKey = (id) => { const x = S.sessions.find((s) => s.id === id); return x ? [x.kind, x.seq] : undefined; };
+  const clean = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== null && !(Array.isArray(v) && !v.length)));
+  return {
+    format: "mlea-hub-official/1",
+    notes: `Exported from the Hub on ${S.today}.`,
+    source_documents: S.sources.map((d) => clean({ id: d.id, title: d.title, file_name: d.file_name, description: d.description })),
+    lecturers: S.lecturers.map((l) => clean({ id: l.id, name: l.name, title: l.title, email: l.email, affiliation: l.affiliation, source_ref: l.source_ref })),
+    courses: [...S.courses].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)).map((c) => clean({
+      id: c.id, code: c.code, short_name: c.short_name, sort_order: c.sort_order, color: c.color, name: c.name, term: c.term,
+      lecturers: S.courseLecturers.filter((x) => x.course_id === c.id).map((x) => [x.lecturer_id, x.role]),
+      description: c.description, objectives: c.objectives, teaching_format: c.teaching_format, assessment_summary: c.assessment_summary,
+      exam_info: c.exam_info, core_readings: c.core_readings, source_ref: c.source_ref, info_required: c.info_required,
+      sessions: S.sessions.filter((s) => s.course_id === c.id).sort((a, b) => (a.kind > b.kind ? 1 : a.kind < b.kind ? -1 : a.seq - b.seq)).map((s) => clean({
+        seq: s.seq, kind: s.kind === "lecture" ? undefined : s.kind, label: s.label, title: s.title, topics: s.topics, readings: s.readings,
+        date: s.scheduled_date, start: hm(s.start_time), end: hm(s.end_time), delivery: s.delivery, location: s.location, lecturer: s.lecturer_id,
+        recording_url: s.recording_url, links: s.links, source_ref: s.source_ref, info_required: s.info_required })),
+      assessments: S.assessments.filter((a) => a.course_id === c.id).map((a) => clean({
+        type: a.type, title: a.title, weight: a.weight, description: a.description, assigned_date: a.assigned_date, due_date: a.due_date,
+        is_group: a.is_group || undefined, max_group_size: a.max_group_size, session: a.session_id ? sessKey(a.session_id) : undefined,
+        source_ref: a.source_ref, info_required: a.info_required })),
+      materials: S.materials.filter((m) => m.course_id === c.id && !m.storage_path).map((m) => clean({
+        kind: m.kind, title: m.title, description: m.description, url: m.url, required: m.required || undefined,
+        session: m.session_id ? sessKey(m.session_id) : undefined,
+        assessment: m.assessment_id ? S.assessments.find((a) => a.id === m.assessment_id)?.title : undefined })),
+    })),
+  };
+}
+
 async function deleteOfficialMaterial(m) {
   if (m.storage_path) await sb.storage.from("official").remove([m.storage_path]);
   check(await sb.from("shared_materials").delete().eq("id", m.id));
@@ -1084,7 +1122,7 @@ async function callFunction(name, body) {
   return data;
 }
 
-return { sessionOrder, loadOfficial, loadPersonal, loadAll, loadProfile, saveAttendance, saveProgress, logStudy, taskForAssessment, allTasks, saveTask, deleteTask, saveEvent, deleteEvent, saveNote, deleteNote, extractText, chunk, uploadAttachment, addLink, updateAttachment, deleteAttachment, signedUrl, uploadOfficialMaterial, deleteOfficialMaterial, updateMyName, callFunction, configured, sb, siteUrl, S, isStaff, isAdmin, course, session, lecturer, source, lecturerName, courseColor, courseSessions };
+return { sessionOrder, loadOfficial, loadPersonal, loadAll, loadProfile, saveAttendance, saveProgress, logStudy, taskForAssessment, allTasks, saveTask, deleteTask, saveEvent, deleteEvent, saveNote, deleteNote, extractText, chunk, uploadAttachment, addLink, updateAttachment, deleteAttachment, signedUrl, uploadOfficialMaterial, addOfficialLink, exportOfficial, deleteOfficialMaterial, updateMyName, callFunction, configured, sb, siteUrl, S, isStaff, isAdmin, course, session, lecturer, source, lecturerName, courseColor, courseSessions };
 })();
 
 __hub["views/auth"] = (function () {
@@ -1697,8 +1735,8 @@ __hub["views/course"] = (function () {
 "use strict";
 // Course dashboards (one per course) and the lecture drawer where students record
 // attendance, the study checklist, notes, time and attachments.
-const { esc, fmtDate, fmtLong, fmtMinutes, fmtBytes, isISO, openDrawer, toast, errToast, debounce, $, $$, md, safeUrl } = __hub["lib"];
-const { S, course, session, lecturer, lecturerName, courseSessions, saveAttendance, saveProgress, logStudy, uploadAttachment, addLink, signedUrl, allTasks, isStaff } = __hub["store"];
+const { esc, fmtDate, fmtLong, fmtMinutes, fmtBytes, isISO, openDrawer, toast, errToast, debounce, $, $$, md, safeUrl, confirmDialog } = __hub["lib"];
+const { S, course, session, lecturer, lecturerName, courseSessions, saveAttendance, saveProgress, logStudy, uploadAttachment, addLink, signedUrl, allTasks, isStaff, uploadOfficialMaterial, addOfficialLink, deleteOfficialMaterial } = __hub["store"];
 const { courseStats, sessionState, isStudyTracked, CHECKLIST, ATT, FORMULAS, taskStatus, TASK_STATUS, remainingMinutes } = __hub["metrics"];
 const { cvar, ledgerCells, ledgerKey, sessionLabel, sessionName, sessionWhen, deliveryTag, attPill, studyPill, srcRef, infoRequired, rateRow, coursePill } = __hub["ui"];
 let currentTab = "lectures";
@@ -1878,6 +1916,13 @@ function openSession(id, { onChange } = {}) {
         <p class="muted small" data-saved></p>
       </div>
 
+      ${isStaff() ? `<div class="block staff-block"><h3>Shared with all students</h3>
+        <p class="small muted" style="margin-top:0">Slides, readings and links you add here appear on this lecture for every student, and the assistant can read uploaded PDFs, Word and PowerPoint files.</p>
+        <ul class="plist">${official.map((m) => `<li><span class="bar"></span><div><div class="t">${esc(m.title)}</div><div class="d">${m.url ? "Link" : fmtBytes(m.size_bytes)}</div></div><button class="btn sm ghost danger" data-odel="${m.id}">Remove</button></li>`).join("") || `<li><span></span><span class="muted small">Nothing shared for this lecture yet.</span></li>`}</ul>
+        <div class="row" style="margin-top:8px"><label class="btn sm primary">Upload slides or files<input type="file" multiple hidden data-oupload accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.txt,.md"></label><button class="btn sm" data-olink>Add a link for everyone</button></div>
+        <form data-olinkform hidden class="form-grid" style="margin-top:10px"><label class="field wide"><span>Link (https://…)</span><input class="input" name="url" type="url" required placeholder="https://"></label><label class="field wide"><span>Name shown to students</span><input class="input" name="title" placeholder="e.g. Lecture recording"></label><div class="row wide"><button class="btn sm primary" type="submit">Share link</button><button class="btn sm" type="button" data-olinkcancel>Cancel</button></div></form>
+      </div>` : ""}
+
       <div class="block"><h3>Files</h3>
         ${official.length ? `<p class="small muted">Official</p><ul class="plist">${official.map((m) => `<li><span class="bar"></span><div>${m.url ? `<a class="t" href="${esc(safeUrl(m.url))}" target="_blank" rel="noopener">${esc(m.title)}</a>` : `<button class="t" data-official-file="${m.id}">${esc(m.title)}</button>`}</div><span></span></li>`).join("")}</ul>` : ""}
         <ul class="plist">${files.map((a) => `<li><span class="bar"></span><div><button class="t" data-my-file="${a.id}">${esc(a.name)}</button><div class="d">${a.kind === "link" ? "Link" : fmtBytes(a.size_bytes)}</div></div><span></span></li>`).join("") || `<li><span></span><span class="muted small">No personal files for this lecture.</span><span></span></li>`}</ul>
@@ -1924,6 +1969,29 @@ function openSession(id, { onChange } = {}) {
       const name = prompt("Name for this link", "Lecture link") || "Lecture link";
       try { await addLink({ name, url, course_id: s.course_id, session_id: s.id }); draw(body); refresh(); } catch (e) { errToast(e); }
     });
+    if (isStaff()) {
+      $("[data-oupload]", body).addEventListener("change", async (e) => {
+        const fl = [...e.target.files]; e.target.value = ""; let done = 0;
+        for (const f of fl) {
+          if (f.size > 50 * 1048576) { toast(`${f.name} is over 50 MB`, "err"); continue; }
+          try { toast(`Uploading ${f.name} for all students…`); await uploadOfficialMaterial(f, { course_id: s.course_id, session_id: s.id, title: f.name }); done++; } catch (er) { errToast(er); }
+        }
+        if (done) toast(done === 1 ? "Shared with all students" : `${done} files shared with all students`);
+        draw(body); refresh();
+      });
+      const lf = $("[data-olinkform]", body);
+      $("[data-olink]", body).addEventListener("click", () => { lf.hidden = false; lf.url.focus(); });
+      $("[data-olinkcancel]", body).addEventListener("click", () => { lf.hidden = true; });
+      lf.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        try { await addOfficialLink({ course_id: s.course_id, session_id: s.id, url: lf.url.value.trim(), title: lf.title.value.trim() }); toast("Link shared with all students"); draw(body); refresh(); } catch (er) { errToast(er); }
+      });
+      $$("[data-odel]", body).forEach((b) => b.addEventListener("click", async () => {
+        const m = S.materials.find((x) => x.id === b.dataset.odel); if (!m) return;
+        if (!(await confirmDialog(`Remove "${m.title}" for every student?`, { ok: "Remove", danger: true }))) return;
+        try { await deleteOfficialMaterial(m); toast("Removed"); draw(body); refresh(); } catch (er) { errToast(er); }
+      }));
+    }
     $$("[data-ai]", body).forEach((b) => b.addEventListener("click", () => window.dispatchEvent(new CustomEvent("hub:ai", { detail: { course_id: s.course_id, session_id: s.id, mode: b.dataset.ai,
       prompt: b.dataset.ai === "explain" ? `Explain ${sessionLabel(s)} (${s.title}) in simple English.` : `Write exam-style practice questions with model answers for ${sessionLabel(s)} (${s.title}).` } }))));
   }
@@ -1933,9 +2001,11 @@ async function openFile(kind, id) {
   try {
     if (kind === "official") {
       const m = S.materials.find((x) => x.id === id);
-      if (m?.url) return window.open(m.url, "_blank", "noopener");
+      if (m?.url) return window.open(safeUrl(m.url), "_blank", "noopener");
+      const w = window.open("", "_blank"); // opened during the tap, so iPhone Safari doesn't block it
       const url = await signedUrl("official", m.storage_path);
-      return window.open(url, "_blank", "noopener");
+      if (w) { w.opener = null; w.location.href = url; } else location.href = url;
+      return;
     }
     const a = S.attachments.find((x) => x.id === id);
     if (!a) return;
@@ -2405,7 +2475,7 @@ async function act(kind, a, after) {
   if (!a) return;
   try {
     if (kind === "open") return a.kind === "link" ? (safeUrl(a.url) !== "#" && window.open(safeUrl(a.url), "_blank", "noopener")) : preview(a);
-    if (kind === "download") return window.open(await signedUrl("private", a.storage_path, true), "_blank", "noopener");
+    if (kind === "download") { const w = window.open("", "_blank"); const u = await signedUrl("private", a.storage_path, true); if (w) { w.opener = null; w.location.href = u; } else location.href = u; return; }
     if (kind === "delete") { if (!(await confirmDialog(`Delete "${a.name}"? This can't be undone.`))) return; await deleteAttachment(a); toast("Deleted"); return after(); }
     if (kind === "edit") {
       openModal("Edit file details", (body, foot, close) => {
@@ -2590,7 +2660,7 @@ __hub["views/admin"] = (function () {
 // Announcements, Cohort dashboard and exports. Personal student records are never shown here;
 // cohort figures come from an aggregate database function.
 const { esc, fmtDate, toast, errToast, openModal, confirmDialog, readForm, download, toCSV, md, $, $$ } = __hub["lib"];
-const { S, sb, isAdmin, isStaff, callFunction, loadOfficial, course, lecturerName, extractText, chunk } = __hub["store"];
+const { S, sb, isAdmin, isStaff, callFunction, loadOfficial, course, lecturerName, extractText, chunk, exportOfficial } = __hub["store"];
 const { DELIVERY } = __hub["metrics"];
 const { coursePill, sessionLabel, chart, css, courseColor, infoRequired } = __hub["ui"];
 const notAllowed = (view) => { view.innerHTML = `<div class="empty"><strong>Staff only.</strong>This page is for the programme admin and coordinators.</div>`; };
@@ -2836,11 +2906,20 @@ function importTab(body, after) {
       toast("Academic data imported"); after();
     } catch (e) { errToast(e); out.textContent = e.message; }
   };
-  $("[data-bundled]", body).addEventListener("click", async () => { try { run(window.__HUB_OFFICIAL_DATA || await (await fetch("data/official-data.json", { cache: "no-store" })).json()); } catch (e) { errToast(e); } });
-  $("[data-dljson]", body).addEventListener("click", async () => {
-    try { const d = window.__HUB_OFFICIAL_DATA || await (await fetch("data/official-data.json", { cache: "no-store" })).json(); download("official-data.json", JSON.stringify(d, null, 2), "application/json"); } catch (e) { errToast(e); }
+  $("[data-bundled]", body).addEventListener("click", () => {
+    if (window.__HUB_OFFICIAL_DATA) return run(window.__HUB_OFFICIAL_DATA);
+    if (S.courses.length) return toast(`The 2026/27 data is already loaded (${S.courses.length} courses, ${S.sessions.length} sessions). To change it, use Download current file, edit it, then Choose a JSON file.`);
+    toast("The bundled data isn't included in this copy. Import a JSON file instead.", "err");
   });
-  $("[data-json]", body).addEventListener("change", async (e) => { try { run(JSON.parse(await e.target.files[0].text())); } catch (er) { errToast(er, "That file isn't valid JSON"); } });
+  $("[data-dljson]", body).addEventListener("click", async () => {
+    try { download(`mlea-official-data-${S.today}.json`, JSON.stringify(exportOfficial(), null, 2), "application/json"); toast("Downloaded the current academic data"); } catch (e) { errToast(e); }
+  });
+  $("[data-json]", body).addEventListener("change", async (e) => {
+    const f = e.target.files[0]; e.target.value = "";
+    if (!f) return;
+    let json; try { json = JSON.parse(await f.text()); } catch { return toast("That file isn't valid JSON", "err"); }
+    run(json);
+  });
   $$("[data-src]", body).forEach((inp) => inp.addEventListener("change", async () => {
     const file = inp.files[0]; const id = inp.dataset.src;
     try {
@@ -3098,7 +3177,7 @@ return { initAI };
 __hub["app"] = (function () {
 "use strict";
 // MLEA Academic Hub — app shell: session handling, navigation, routing, global search.
-const { esc, $, $$, icon, initials, toast, errToast, todayISO, partnerLogos } = __hub["lib"];
+const { esc, $, $$, icon, initials, toast, errToast, todayISO, partnerLogos, closeDrawer } = __hub["lib"];
 const { S, sb, configured, loadAll, loadProfile, loadPersonal, isAdmin, isStaff, courseSessions } = __hub["store"];
 const { renderAuth, hideAuth } = __hub["views/auth"];
 const { renderDashboard } = __hub["views/dashboard"];
@@ -3191,7 +3270,7 @@ function wireShell() {
     try { localStorage.setItem("hub-theme", document.documentElement.dataset.theme); } catch { /* ignore */ }
     rerender();
   });
-  window.addEventListener("hashchange", () => { render(); $("#view").focus({ preventScroll: true }); window.scrollTo(0, 0); });
+  window.addEventListener("hashchange", () => { closeDrawer(); render(); $("#view").focus({ preventScroll: true }); window.scrollTo(0, 0); });
   window.addEventListener("hub:changed", () => { if ($("#drawer").hidden && $("#modal").hidden) rerender(); else pendingRerender = true; });
   window.addEventListener("hub:task", (e) => openTask(e.detail, rerender));
   window.addEventListener("hub:preview", (e) => preview(e.detail));

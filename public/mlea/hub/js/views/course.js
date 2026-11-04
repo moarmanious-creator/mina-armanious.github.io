@@ -1,12 +1,12 @@
 // Course dashboards (one per course) and the lecture drawer where students record
 // attendance, the study checklist, notes, time and attachments.
-import { esc, fmtDate, fmtLong, fmtMinutes, fmtBytes, isISO, openDrawer, toast, errToast, debounce, $, $$, md, safeUrl } from "../lib.js?v=202611041555";
+import { esc, fmtDate, fmtLong, fmtMinutes, fmtBytes, isISO, openDrawer, toast, errToast, debounce, $, $$, md, safeUrl, confirmDialog } from "../lib.js?v=202611041915";
 import {
   S, course, session, lecturer, lecturerName, courseSessions, saveAttendance, saveProgress, logStudy, uploadAttachment, addLink,
-  signedUrl, allTasks, isStaff,
-} from "../store.js?v=202611041555";
-import { courseStats, sessionState, isStudyTracked, CHECKLIST, ATT, FORMULAS, taskStatus, TASK_STATUS, remainingMinutes } from "../metrics.js?v=202611041555";
-import { cvar, ledgerCells, ledgerKey, sessionLabel, sessionName, sessionWhen, deliveryTag, attPill, studyPill, srcRef, infoRequired, rateRow, coursePill } from "../ui.js?v=202611041555";
+  signedUrl, allTasks, isStaff, uploadOfficialMaterial, addOfficialLink, deleteOfficialMaterial,
+} from "../store.js?v=202611041915";
+import { courseStats, sessionState, isStudyTracked, CHECKLIST, ATT, FORMULAS, taskStatus, TASK_STATUS, remainingMinutes } from "../metrics.js?v=202611041915";
+import { cvar, ledgerCells, ledgerKey, sessionLabel, sessionName, sessionWhen, deliveryTag, attPill, studyPill, srcRef, infoRequired, rateRow, coursePill } from "../ui.js?v=202611041915";
 
 let currentTab = "lectures";
 
@@ -185,6 +185,13 @@ export function openSession(id, { onChange } = {}) {
         <p class="muted small" data-saved></p>
       </div>
 
+      ${isStaff() ? `<div class="block staff-block"><h3>Shared with all students</h3>
+        <p class="small muted" style="margin-top:0">Slides, readings and links you add here appear on this lecture for every student, and the assistant can read uploaded PDFs, Word and PowerPoint files.</p>
+        <ul class="plist">${official.map((m) => `<li><span class="bar"></span><div><div class="t">${esc(m.title)}</div><div class="d">${m.url ? "Link" : fmtBytes(m.size_bytes)}</div></div><button class="btn sm ghost danger" data-odel="${m.id}">Remove</button></li>`).join("") || `<li><span></span><span class="muted small">Nothing shared for this lecture yet.</span></li>`}</ul>
+        <div class="row" style="margin-top:8px"><label class="btn sm primary">Upload slides or files<input type="file" multiple hidden data-oupload accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.txt,.md"></label><button class="btn sm" data-olink>Add a link for everyone</button></div>
+        <form data-olinkform hidden class="form-grid" style="margin-top:10px"><label class="field wide"><span>Link (https://…)</span><input class="input" name="url" type="url" required placeholder="https://"></label><label class="field wide"><span>Name shown to students</span><input class="input" name="title" placeholder="e.g. Lecture recording"></label><div class="row wide"><button class="btn sm primary" type="submit">Share link</button><button class="btn sm" type="button" data-olinkcancel>Cancel</button></div></form>
+      </div>` : ""}
+
       <div class="block"><h3>Files</h3>
         ${official.length ? `<p class="small muted">Official</p><ul class="plist">${official.map((m) => `<li><span class="bar"></span><div>${m.url ? `<a class="t" href="${esc(safeUrl(m.url))}" target="_blank" rel="noopener">${esc(m.title)}</a>` : `<button class="t" data-official-file="${m.id}">${esc(m.title)}</button>`}</div><span></span></li>`).join("")}</ul>` : ""}
         <ul class="plist">${files.map((a) => `<li><span class="bar"></span><div><button class="t" data-my-file="${a.id}">${esc(a.name)}</button><div class="d">${a.kind === "link" ? "Link" : fmtBytes(a.size_bytes)}</div></div><span></span></li>`).join("") || `<li><span></span><span class="muted small">No personal files for this lecture.</span><span></span></li>`}</ul>
@@ -231,6 +238,29 @@ export function openSession(id, { onChange } = {}) {
       const name = prompt("Name for this link", "Lecture link") || "Lecture link";
       try { await addLink({ name, url, course_id: s.course_id, session_id: s.id }); draw(body); refresh(); } catch (e) { errToast(e); }
     });
+    if (isStaff()) {
+      $("[data-oupload]", body).addEventListener("change", async (e) => {
+        const fl = [...e.target.files]; e.target.value = ""; let done = 0;
+        for (const f of fl) {
+          if (f.size > 50 * 1048576) { toast(`${f.name} is over 50 MB`, "err"); continue; }
+          try { toast(`Uploading ${f.name} for all students…`); await uploadOfficialMaterial(f, { course_id: s.course_id, session_id: s.id, title: f.name }); done++; } catch (er) { errToast(er); }
+        }
+        if (done) toast(done === 1 ? "Shared with all students" : `${done} files shared with all students`);
+        draw(body); refresh();
+      });
+      const lf = $("[data-olinkform]", body);
+      $("[data-olink]", body).addEventListener("click", () => { lf.hidden = false; lf.url.focus(); });
+      $("[data-olinkcancel]", body).addEventListener("click", () => { lf.hidden = true; });
+      lf.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        try { await addOfficialLink({ course_id: s.course_id, session_id: s.id, url: lf.url.value.trim(), title: lf.title.value.trim() }); toast("Link shared with all students"); draw(body); refresh(); } catch (er) { errToast(er); }
+      });
+      $$("[data-odel]", body).forEach((b) => b.addEventListener("click", async () => {
+        const m = S.materials.find((x) => x.id === b.dataset.odel); if (!m) return;
+        if (!(await confirmDialog(`Remove "${m.title}" for every student?`, { ok: "Remove", danger: true }))) return;
+        try { await deleteOfficialMaterial(m); toast("Removed"); draw(body); refresh(); } catch (er) { errToast(er); }
+      }));
+    }
     $$("[data-ai]", body).forEach((b) => b.addEventListener("click", () => window.dispatchEvent(new CustomEvent("hub:ai", { detail: { course_id: s.course_id, session_id: s.id, mode: b.dataset.ai,
       prompt: b.dataset.ai === "explain" ? `Explain ${sessionLabel(s)} (${s.title}) in simple English.` : `Write exam-style practice questions with model answers for ${sessionLabel(s)} (${s.title}).` } }))));
   }
@@ -240,9 +270,11 @@ export async function openFile(kind, id) {
   try {
     if (kind === "official") {
       const m = S.materials.find((x) => x.id === id);
-      if (m?.url) return window.open(m.url, "_blank", "noopener");
+      if (m?.url) return window.open(safeUrl(m.url), "_blank", "noopener");
+      const w = window.open("", "_blank"); // opened during the tap, so iPhone Safari doesn't block it
       const url = await signedUrl("official", m.storage_path);
-      return window.open(url, "_blank", "noopener");
+      if (w) { w.opener = null; w.location.href = url; } else location.href = url;
+      return;
     }
     const a = S.attachments.find((x) => x.id === id);
     if (!a) return;

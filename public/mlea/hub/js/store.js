@@ -1,6 +1,6 @@
 // Data layer: Supabase client, loading, and every write the app makes.
 // All reads and writes go through row-level security; nothing personal is kept in the browser.
-import { todayISO, loadScript, uid } from "./lib.js?v=202611041555";
+import { todayISO, loadScript, uid } from "./lib.js?v=202611041915";
 
 const cfg = window.MLEA_CONFIG || {};
 export const configured = !!(cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY && window.supabase);
@@ -319,6 +319,44 @@ export async function uploadOfficialMaterial(file, meta) {
   }
   return { row, searchable: !!text };
 }
+export async function addOfficialLink(meta) {
+  if (!/^https?:\/\//i.test(meta.url || "")) throw new Error("Links must start with http:// or https://");
+  const row = check(await sb.from("shared_materials").insert({ course_id: meta.course_id || null, session_id: meta.session_id || null, kind: "link",
+    title: meta.title || meta.url, description: meta.description || null, url: meta.url, uploaded_by: S.user.id }).select().single());
+  S.materials.push(row);
+  return row;
+}
+// The current official structure from the database, in the same format the importer reads.
+export function exportOfficial() {
+  const hm = (t) => (t ? String(t).slice(0, 5) : undefined);
+  const sessKey = (id) => { const x = S.sessions.find((s) => s.id === id); return x ? [x.kind, x.seq] : undefined; };
+  const clean = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== null && !(Array.isArray(v) && !v.length)));
+  return {
+    format: "mlea-hub-official/1",
+    notes: `Exported from the Hub on ${S.today}.`,
+    source_documents: S.sources.map((d) => clean({ id: d.id, title: d.title, file_name: d.file_name, description: d.description })),
+    lecturers: S.lecturers.map((l) => clean({ id: l.id, name: l.name, title: l.title, email: l.email, affiliation: l.affiliation, source_ref: l.source_ref })),
+    courses: [...S.courses].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)).map((c) => clean({
+      id: c.id, code: c.code, short_name: c.short_name, sort_order: c.sort_order, color: c.color, name: c.name, term: c.term,
+      lecturers: S.courseLecturers.filter((x) => x.course_id === c.id).map((x) => [x.lecturer_id, x.role]),
+      description: c.description, objectives: c.objectives, teaching_format: c.teaching_format, assessment_summary: c.assessment_summary,
+      exam_info: c.exam_info, core_readings: c.core_readings, source_ref: c.source_ref, info_required: c.info_required,
+      sessions: S.sessions.filter((s) => s.course_id === c.id).sort((a, b) => (a.kind > b.kind ? 1 : a.kind < b.kind ? -1 : a.seq - b.seq)).map((s) => clean({
+        seq: s.seq, kind: s.kind === "lecture" ? undefined : s.kind, label: s.label, title: s.title, topics: s.topics, readings: s.readings,
+        date: s.scheduled_date, start: hm(s.start_time), end: hm(s.end_time), delivery: s.delivery, location: s.location, lecturer: s.lecturer_id,
+        recording_url: s.recording_url, links: s.links, source_ref: s.source_ref, info_required: s.info_required })),
+      assessments: S.assessments.filter((a) => a.course_id === c.id).map((a) => clean({
+        type: a.type, title: a.title, weight: a.weight, description: a.description, assigned_date: a.assigned_date, due_date: a.due_date,
+        is_group: a.is_group || undefined, max_group_size: a.max_group_size, session: a.session_id ? sessKey(a.session_id) : undefined,
+        source_ref: a.source_ref, info_required: a.info_required })),
+      materials: S.materials.filter((m) => m.course_id === c.id && !m.storage_path).map((m) => clean({
+        kind: m.kind, title: m.title, description: m.description, url: m.url, required: m.required || undefined,
+        session: m.session_id ? sessKey(m.session_id) : undefined,
+        assessment: m.assessment_id ? S.assessments.find((a) => a.id === m.assessment_id)?.title : undefined })),
+    })),
+  };
+}
+
 export async function deleteOfficialMaterial(m) {
   if (m.storage_path) await sb.storage.from("official").remove([m.storage_path]);
   check(await sb.from("shared_materials").delete().eq("id", m.id));

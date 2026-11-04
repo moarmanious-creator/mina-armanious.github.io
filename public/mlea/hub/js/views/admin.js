@@ -1,10 +1,10 @@
 // Staff areas: Students & access (admin), Academic data (admin + coordinator),
 // Announcements, Cohort dashboard and exports. Personal student records are never shown here;
 // cohort figures come from an aggregate database function.
-import { esc, fmtDate, toast, errToast, openModal, confirmDialog, readForm, download, toCSV, md, $, $$ } from "../lib.js?v=202611041555";
-import { S, sb, isAdmin, isStaff, callFunction, loadOfficial, course, lecturerName, extractText, chunk } from "../store.js?v=202611041555";
-import { DELIVERY } from "../metrics.js?v=202611041555";
-import { coursePill, sessionLabel, chart, css, courseColor, infoRequired } from "../ui.js?v=202611041555";
+import { esc, fmtDate, toast, errToast, openModal, confirmDialog, readForm, download, toCSV, md, $, $$ } from "../lib.js?v=202611041915";
+import { S, sb, isAdmin, isStaff, callFunction, loadOfficial, course, lecturerName, extractText, chunk, exportOfficial } from "../store.js?v=202611041915";
+import { DELIVERY } from "../metrics.js?v=202611041915";
+import { coursePill, sessionLabel, chart, css, courseColor, infoRequired } from "../ui.js?v=202611041915";
 
 const notAllowed = (view) => { view.innerHTML = `<div class="empty"><strong>Staff only.</strong>This page is for the programme admin and coordinators.</div>`; };
 
@@ -249,11 +249,20 @@ function importTab(body, after) {
       toast("Academic data imported"); after();
     } catch (e) { errToast(e); out.textContent = e.message; }
   };
-  $("[data-bundled]", body).addEventListener("click", async () => { try { run(window.__HUB_OFFICIAL_DATA || await (await fetch("data/official-data.json", { cache: "no-store" })).json()); } catch (e) { errToast(e); } });
-  $("[data-dljson]", body).addEventListener("click", async () => {
-    try { const d = window.__HUB_OFFICIAL_DATA || await (await fetch("data/official-data.json", { cache: "no-store" })).json(); download("official-data.json", JSON.stringify(d, null, 2), "application/json"); } catch (e) { errToast(e); }
+  $("[data-bundled]", body).addEventListener("click", () => {
+    if (window.__HUB_OFFICIAL_DATA) return run(window.__HUB_OFFICIAL_DATA);
+    if (S.courses.length) return toast(`The 2026/27 data is already loaded (${S.courses.length} courses, ${S.sessions.length} sessions). To change it, use Download current file, edit it, then Choose a JSON file.`);
+    toast("The bundled data isn't included in this copy. Import a JSON file instead.", "err");
   });
-  $("[data-json]", body).addEventListener("change", async (e) => { try { run(JSON.parse(await e.target.files[0].text())); } catch (er) { errToast(er, "That file isn't valid JSON"); } });
+  $("[data-dljson]", body).addEventListener("click", async () => {
+    try { download(`mlea-official-data-${S.today}.json`, JSON.stringify(exportOfficial(), null, 2), "application/json"); toast("Downloaded the current academic data"); } catch (e) { errToast(e); }
+  });
+  $("[data-json]", body).addEventListener("change", async (e) => {
+    const f = e.target.files[0]; e.target.value = "";
+    if (!f) return;
+    let json; try { json = JSON.parse(await f.text()); } catch { return toast("That file isn't valid JSON", "err"); }
+    run(json);
+  });
   $$("[data-src]", body).forEach((inp) => inp.addEventListener("change", async () => {
     const file = inp.files[0]; const id = inp.dataset.src;
     try {

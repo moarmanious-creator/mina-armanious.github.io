@@ -1,7 +1,7 @@
 // Personal document repository (private) and official course materials (shared), plus saved notes.
-import { esc, fmtDate, fmtBytes, openModal, toast, errToast, confirmDialog, readForm, md, $, $$, safeUrl } from "../lib.js?v=202611041555";
-import { S, isStaff, uploadAttachment, addLink, updateAttachment, deleteAttachment, signedUrl, uploadOfficialMaterial, deleteOfficialMaterial, saveNote, deleteNote, session, course } from "../store.js?v=202611041555";
-import { coursePill, sessionLabel, sessionName } from "../ui.js?v=202611041555";
+import { esc, fmtDate, fmtBytes, openModal, toast, errToast, confirmDialog, readForm, md, $, $$, safeUrl } from "../lib.js?v=202611041915";
+import { S, isStaff, uploadAttachment, addLink, updateAttachment, deleteAttachment, signedUrl, uploadOfficialMaterial, deleteOfficialMaterial, saveNote, deleteNote, session, course } from "../store.js?v=202611041915";
+import { coursePill, sessionLabel, sessionName } from "../ui.js?v=202611041915";
 
 const UI = { tab: "mine", q: "", course: "all", folder: "all" };
 const EXT_COLOR = { PDF: "#a8432f", DOC: "#2f5d8a", DOCX: "#2f5d8a", PPT: "#a3561d", PPTX: "#a3561d", XLS: "#3f7a52", XLSX: "#3f7a52", PNG: "#7a4e9a", JPG: "#7a4e9a", JPEG: "#7a4e9a", LINK: "#1f5c7a" };
@@ -106,7 +106,7 @@ async function act(kind, a, after) {
   if (!a) return;
   try {
     if (kind === "open") return a.kind === "link" ? (safeUrl(a.url) !== "#" && window.open(safeUrl(a.url), "_blank", "noopener")) : preview(a);
-    if (kind === "download") return window.open(await signedUrl("private", a.storage_path, true), "_blank", "noopener");
+    if (kind === "download") { const w = window.open("", "_blank"); const u = await signedUrl("private", a.storage_path, true); if (w) { w.opener = null; w.location.href = u; } else location.href = u; return; }
     if (kind === "delete") { if (!(await confirmDialog(`Delete "${a.name}"? This can't be undone.`))) return; await deleteAttachment(a); toast("Deleted"); return after(); }
     if (kind === "edit") {
       openModal("Edit file details", (body, foot, close) => {
