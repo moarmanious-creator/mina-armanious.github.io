@@ -584,7 +584,8 @@ function toast(msg, kind = "") {
 }
 function errToast(e, fallback = "Something went wrong") {
   console.error(e);
-  toast((e && (e.message || e.error_description)) || fallback, "err");
+  const msg = (e && (e.message || e.error_description)) || fallback;
+  toast(/failed to fetch|networkerror|load failed|network request failed/i.test(msg) ? "Couldn't reach the server. Check your internet connection and try again." : msg, "err");
 }
 
 let lastFocus = null;
@@ -947,10 +948,46 @@ function chunk(text, size = 1600, overlap = 200) {
   return out.filter((c) => c.trim().length > 40);
 }
 
+
+// Uploads go through Supabase's resumable (TUS) endpoint in 6 MB pieces, retrying each piece,
+// so a large PDF on a weak mobile connection resumes instead of failing with "Failed to fetch".
+const TUS_SRC = "https://cdn.jsdelivr.net/npm/tus-js-client@4.1.0/dist/tus.min.js";
+async function storageUpload(bucket, path, file, contentType) {
+  const plain = async () => {
+    const up = await sb.storage.from(bucket).upload(path, file, { contentType, upsert: false });
+    if (up.error) throw up.error;
+  };
+  try { await loadScript(TUS_SRC); } catch { return plain(); }
+  if (!window.tus || !window.tus.isSupported) return plain();
+  const { data } = await sb.auth.getSession();
+  const token = data?.session?.access_token;
+  if (!token) throw new Error("Your session has expired. Sign in again, then retry the upload.");
+  await new Promise((resolve, reject) => {
+    const u = new window.tus.Upload(file, {
+      endpoint: `${cfg.SUPABASE_URL}/storage/v1/upload/resumable`,
+      retryDelays: [0, 1000, 3000, 5000, 10000, 20000],
+      headers: { authorization: `Bearer ${token}`, apikey: cfg.SUPABASE_ANON_KEY, "x-upsert": "false" },
+      uploadDataDuringCreation: true,
+      removeFingerprintOnSuccess: true,
+      chunkSize: 6 * 1024 * 1024,
+      metadata: { bucketName: bucket, objectName: path, contentType, cacheControl: "3600" },
+      onError: (err) => {
+        const status = err?.originalResponse?.getStatus?.();
+        const body = err?.originalResponse?.getBody?.() || "";
+        if (status === 413 || /too large|exceeded the maximum/i.test(body)) reject(new Error(`${file.name} is larger than the 50 MB limit.`));
+        else if (status === 403 || /row-level security|unauthori/i.test(body)) reject(new Error("You don't have permission to upload here. Sign out and in again."));
+        else if (!status) reject(new Error(`The connection dropped while uploading ${file.name}. Check your internet and try again.`));
+        else reject(new Error(`Upload failed (${status}). ${body.slice(0, 160)}`));
+      },
+      onSuccess: () => resolve(),
+    });
+    u.findPreviousUploads().then((prev) => { if (prev.length) u.resumeFromPreviousUpload(prev[0]); u.start(); }).catch(() => u.start());
+  });
+}
+
 async function uploadAttachment(file, meta = {}) {
   const path = `${S.user.id}/${uid()}-${safeName(file.name)}`;
-  const up = await sb.storage.from("private").upload(path, file, { contentType: file.type || "application/octet-stream", upsert: false });
-  if (up.error) throw up.error;
+  await storageUpload("private", path, file, file.type || "application/octet-stream");
   const row = check(await sb.from("student_attachments").insert({
     name: file.name, kind: "file", storage_path: path, mime: file.type || null, size_bytes: file.size,
     course_id: meta.course_id || null, session_id: meta.session_id || null, task_id: meta.task_id || null,
@@ -990,8 +1027,7 @@ async function signedUrl(bucket, path, download = false) {
 // ── Official materials (staff) ──
 async function uploadOfficialMaterial(file, meta) {
   const path = `${meta.course_id || "programme"}/${uid()}-${safeName(file.name)}`;
-  const up = await sb.storage.from("official").upload(path, file, { contentType: file.type || "application/octet-stream" });
-  if (up.error) throw up.error;
+  await storageUpload("official", path, file, file.type || "application/octet-stream");
   const row = check(await sb.from("shared_materials").insert({ course_id: meta.course_id || null, session_id: meta.session_id || null, kind: "file",
     title: meta.title || file.name, description: meta.description || null, storage_path: path, mime: file.type || null, size_bytes: file.size,
     required: !!meta.required, uploaded_by: S.user.id }).select().single());
@@ -2318,9 +2354,12 @@ function askMeta(files, after) {
     foot.querySelector("[data-u]").onclick = async (e) => {
       e.target.disabled = true;
       const meta = readForm(form);
-      let n = 0;
-      for (const f of ok) { try { e.target.textContent = `Uploading ${++n} of ${ok.length}…`; await uploadAttachment(f, meta); } catch (er) { errToast(er); } }
-      close(); toast("Upload complete"); after();
+      let n = 0, done = 0;
+      for (const f of ok) { try { e.target.textContent = `Uploading ${++n} of ${ok.length}…`; await uploadAttachment(f, meta); done++; } catch (er) { errToast(er); } }
+      close();
+      if (done === ok.length) toast(done === 1 ? "Uploaded" : `${done} files uploaded`);
+      else if (done) toast(`${done} of ${ok.length} files uploaded`, "err");
+      after();
     };
   });
 }
@@ -2392,8 +2431,9 @@ function official(body) {
       foot.querySelector("[data-c]").onclick = close;
       foot.querySelector("[data-u]").onclick = async (ev) => {
         ev.target.disabled = true; const meta = readForm(form);
-        for (const f of files) { try { await uploadOfficialMaterial(f, { ...meta, title: f.name }); } catch (er) { errToast(er); } }
-        close(); toast("Uploaded for all students"); official(body);
+        let done = 0;
+        for (const f of files) { try { await uploadOfficialMaterial(f, { ...meta, title: f.name }); done++; } catch (er) { errToast(er); } }
+        close(); if (done) toast(done === files.length ? "Uploaded for all students" : `${done} of ${files.length} uploaded for all students`, done === files.length ? undefined : "err"); official(body);
       };
     });
   });

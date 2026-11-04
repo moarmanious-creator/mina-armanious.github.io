@@ -77,9 +77,12 @@ function askMeta(files, after) {
     foot.querySelector("[data-u]").onclick = async (e) => {
       e.target.disabled = true;
       const meta = readForm(form);
-      let n = 0;
-      for (const f of ok) { try { e.target.textContent = `Uploading ${++n} of ${ok.length}…`; await uploadAttachment(f, meta); } catch (er) { errToast(er); } }
-      close(); toast("Upload complete"); after();
+      let n = 0, done = 0;
+      for (const f of ok) { try { e.target.textContent = `Uploading ${++n} of ${ok.length}…`; await uploadAttachment(f, meta); done++; } catch (er) { errToast(er); } }
+      close();
+      if (done === ok.length) toast(done === 1 ? "Uploaded" : `${done} files uploaded`);
+      else if (done) toast(`${done} of ${ok.length} files uploaded`, "err");
+      after();
     };
   });
 }
@@ -151,8 +154,9 @@ function official(body) {
       foot.querySelector("[data-c]").onclick = close;
       foot.querySelector("[data-u]").onclick = async (ev) => {
         ev.target.disabled = true; const meta = readForm(form);
-        for (const f of files) { try { await uploadOfficialMaterial(f, { ...meta, title: f.name }); } catch (er) { errToast(er); } }
-        close(); toast("Uploaded for all students"); official(body);
+        let done = 0;
+        for (const f of files) { try { await uploadOfficialMaterial(f, { ...meta, title: f.name }); done++; } catch (er) { errToast(er); } }
+        close(); if (done) toast(done === files.length ? "Uploaded for all students" : `${done} of ${files.length} uploaded for all students`, done === files.length ? undefined : "err"); official(body);
       };
     });
   });

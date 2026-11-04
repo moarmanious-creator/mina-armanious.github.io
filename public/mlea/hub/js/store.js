@@ -228,10 +228,46 @@ export function chunk(text, size = 1600, overlap = 200) {
   return out.filter((c) => c.trim().length > 40);
 }
 
+
+// Uploads go through Supabase's resumable (TUS) endpoint in 6 MB pieces, retrying each piece,
+// so a large PDF on a weak mobile connection resumes instead of failing with "Failed to fetch".
+const TUS_SRC = "https://cdn.jsdelivr.net/npm/tus-js-client@4.1.0/dist/tus.min.js";
+async function storageUpload(bucket, path, file, contentType) {
+  const plain = async () => {
+    const up = await sb.storage.from(bucket).upload(path, file, { contentType, upsert: false });
+    if (up.error) throw up.error;
+  };
+  try { await loadScript(TUS_SRC); } catch { return plain(); }
+  if (!window.tus || !window.tus.isSupported) return plain();
+  const { data } = await sb.auth.getSession();
+  const token = data?.session?.access_token;
+  if (!token) throw new Error("Your session has expired. Sign in again, then retry the upload.");
+  await new Promise((resolve, reject) => {
+    const u = new window.tus.Upload(file, {
+      endpoint: `${cfg.SUPABASE_URL}/storage/v1/upload/resumable`,
+      retryDelays: [0, 1000, 3000, 5000, 10000, 20000],
+      headers: { authorization: `Bearer ${token}`, apikey: cfg.SUPABASE_ANON_KEY, "x-upsert": "false" },
+      uploadDataDuringCreation: true,
+      removeFingerprintOnSuccess: true,
+      chunkSize: 6 * 1024 * 1024,
+      metadata: { bucketName: bucket, objectName: path, contentType, cacheControl: "3600" },
+      onError: (err) => {
+        const status = err?.originalResponse?.getStatus?.();
+        const body = err?.originalResponse?.getBody?.() || "";
+        if (status === 413 || /too large|exceeded the maximum/i.test(body)) reject(new Error(`${file.name} is larger than the 50 MB limit.`));
+        else if (status === 403 || /row-level security|unauthori/i.test(body)) reject(new Error("You don't have permission to upload here. Sign out and in again."));
+        else if (!status) reject(new Error(`The connection dropped while uploading ${file.name}. Check your internet and try again.`));
+        else reject(new Error(`Upload failed (${status}). ${body.slice(0, 160)}`));
+      },
+      onSuccess: () => resolve(),
+    });
+    u.findPreviousUploads().then((prev) => { if (prev.length) u.resumeFromPreviousUpload(prev[0]); u.start(); }).catch(() => u.start());
+  });
+}
+
 export async function uploadAttachment(file, meta = {}) {
   const path = `${S.user.id}/${uid()}-${safeName(file.name)}`;
-  const up = await sb.storage.from("private").upload(path, file, { contentType: file.type || "application/octet-stream", upsert: false });
-  if (up.error) throw up.error;
+  await storageUpload("private", path, file, file.type || "application/octet-stream");
   const row = check(await sb.from("student_attachments").insert({
     name: file.name, kind: "file", storage_path: path, mime: file.type || null, size_bytes: file.size,
     course_id: meta.course_id || null, session_id: meta.session_id || null, task_id: meta.task_id || null,
@@ -271,8 +307,7 @@ export async function signedUrl(bucket, path, download = false) {
 // ── Official materials (staff) ──
 export async function uploadOfficialMaterial(file, meta) {
   const path = `${meta.course_id || "programme"}/${uid()}-${safeName(file.name)}`;
-  const up = await sb.storage.from("official").upload(path, file, { contentType: file.type || "application/octet-stream" });
-  if (up.error) throw up.error;
+  await storageUpload("official", path, file, file.type || "application/octet-stream");
   const row = check(await sb.from("shared_materials").insert({ course_id: meta.course_id || null, session_id: meta.session_id || null, kind: "file",
     title: meta.title || file.name, description: meta.description || null, storage_path: path, mime: file.type || null, size_bytes: file.size,
     required: !!meta.required, uploaded_by: S.user.id }).select().single());

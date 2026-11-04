@@ -75,7 +75,8 @@ export function toast(msg, kind = "") {
 }
 export function errToast(e, fallback = "Something went wrong") {
   console.error(e);
-  toast((e && (e.message || e.error_description)) || fallback, "err");
+  const msg = (e && (e.message || e.error_description)) || fallback;
+  toast(/failed to fetch|networkerror|load failed|network request failed/i.test(msg) ? "Couldn't reach the server. Check your internet connection and try again." : msg, "err");
 }
 
 let lastFocus = null;
