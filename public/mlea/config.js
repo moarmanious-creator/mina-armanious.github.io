@@ -13,7 +13,7 @@ window.MLEA_CONFIG = {
   AI_ROLES: ["admin"],
   // ── MLEA Academic Hub (the /hub app) ──
   // The Hub's assistant shows a "switched off" note when this is false.
-  HUB_AI_ENABLED: false,
+  HUB_AI_ENABLED: true,
   // Public address of the Hub; invitation and password-reset emails link here.
   HUB_SITE_URL: "https://moarmanious-creator.github.io/mina-armanious.github.io/mlea/hub/"
 };
