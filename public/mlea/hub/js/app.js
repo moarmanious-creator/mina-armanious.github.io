@@ -1,18 +1,18 @@
 // MLEA Academic Hub — app shell: session handling, navigation, routing, global search.
-import { esc, $, $$, icon, initials, toast, errToast, todayISO, partnerLogos } from "./lib.js";
-import { S, sb, configured, loadAll, loadProfile, loadPersonal, isAdmin, isStaff, courseSessions } from "./store.js";
-import { renderAuth, hideAuth } from "./views/auth.js";
-import { renderDashboard } from "./views/dashboard.js";
-import { renderCourse, openSession, openFile } from "./views/course.js";
-import { renderCalendar, startReminders } from "./views/calendar.js";
-import { renderTasks, openTask, findTask } from "./views/tasks.js";
-import { renderDocuments, preview } from "./views/documents.js";
-import { renderAnalytics, renderPlan } from "./views/analytics.js";
-import { renderStudents, renderAcademicData, renderAnnouncements, renderCohort } from "./views/admin.js";
-import { renderAccount } from "./views/account.js";
-import { initAI } from "./views/ai.js";
-import { ledgerCells } from "./ui.js";
-import { isStudyTracked } from "./metrics.js";
+import { esc, $, $$, icon, initials, toast, errToast, todayISO, partnerLogos } from "./lib.js?v=202611041555";
+import { S, sb, configured, loadAll, loadProfile, loadPersonal, isAdmin, isStaff, courseSessions } from "./store.js?v=202611041555";
+import { renderAuth, hideAuth } from "./views/auth.js?v=202611041555";
+import { renderDashboard } from "./views/dashboard.js?v=202611041555";
+import { renderCourse, openSession, openFile } from "./views/course.js?v=202611041555";
+import { renderCalendar, startReminders } from "./views/calendar.js?v=202611041555";
+import { renderTasks, openTask, findTask } from "./views/tasks.js?v=202611041555";
+import { renderDocuments, preview } from "./views/documents.js?v=202611041555";
+import { renderAnalytics, renderPlan } from "./views/analytics.js?v=202611041555";
+import { renderStudents, renderAcademicData, renderAnnouncements, renderCohort } from "./views/admin.js?v=202611041555";
+import { renderAccount } from "./views/account.js?v=202611041555";
+import { initAI } from "./views/ai.js?v=202611041555";
+import { ledgerCells } from "./ui.js?v=202611041555";
+import { isStudyTracked } from "./metrics.js?v=202611041555";
 
 const ROUTES = {
   dashboard: ["Dashboard", renderDashboard],

@@ -1,6 +1,6 @@
 // Sign-in, account creation (programme list only), password reset and set-password screens.
-import { esc, $, partnerLogos } from "../lib.js";
-import { sb, siteUrl } from "../store.js";
+import { esc, $, partnerLogos } from "../lib.js?v=202611041555";
+import { sb, siteUrl } from "../store.js?v=202611041555";
 
 const art = () => {
   const rows = [[1, 1, .5, 1, 0, .3, 0, 0], [1, .5, 1, 1, 1, 0, 0, 0], [1, 1, 1, .5, .3, 0, 0, 0], [0, 1, 1, 1, 0, 0, 0, 0]];

@@ -1,12 +1,12 @@
 // Course dashboards (one per course) and the lecture drawer where students record
 // attendance, the study checklist, notes, time and attachments.
-import { esc, fmtDate, fmtLong, fmtMinutes, fmtBytes, isISO, openDrawer, toast, errToast, debounce, $, $$, md, safeUrl } from "../lib.js";
+import { esc, fmtDate, fmtLong, fmtMinutes, fmtBytes, isISO, openDrawer, toast, errToast, debounce, $, $$, md, safeUrl } from "../lib.js?v=202611041555";
 import {
   S, course, session, lecturer, lecturerName, courseSessions, saveAttendance, saveProgress, logStudy, uploadAttachment, addLink,
   signedUrl, allTasks, isStaff,
-} from "../store.js";
-import { courseStats, sessionState, isStudyTracked, CHECKLIST, ATT, FORMULAS, taskStatus, TASK_STATUS, remainingMinutes } from "../metrics.js";
-import { cvar, ledgerCells, ledgerKey, sessionLabel, sessionName, sessionWhen, deliveryTag, attPill, studyPill, srcRef, infoRequired, rateRow, coursePill } from "../ui.js";
+} from "../store.js?v=202611041555";
+import { courseStats, sessionState, isStudyTracked, CHECKLIST, ATT, FORMULAS, taskStatus, TASK_STATUS, remainingMinutes } from "../metrics.js?v=202611041555";
+import { cvar, ledgerCells, ledgerKey, sessionLabel, sessionName, sessionWhen, deliveryTag, attPill, studyPill, srcRef, infoRequired, rateRow, coursePill } from "../ui.js?v=202611041555";
 
 let currentTab = "lectures";
 
