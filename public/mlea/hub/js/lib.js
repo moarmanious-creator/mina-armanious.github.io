@@ -179,6 +179,13 @@ export function toCSV(rows) {
 // Only web links are rendered as clickable; anything else (javascript:, data:) becomes inert.
 export const safeUrl = (u) => (/^https?:\/\//i.test(String(u ?? "").trim()) ? String(u).trim() : "#");
 
+// Partner logos. Image files are optional: if one is missing the institution name shows instead.
+export const partnerLogos = () => `<div class="partners">
+  <span class="partner"><img data-logo src="img/logo-feps.png" alt="Cairo University, Faculty of Economics and Political Science"><span>Cairo University · FEPS</span></span>
+  <span class="partner"><img data-logo src="img/logo-uhh.png" alt="Universität Hamburg, Faculty of Law"><span>Universität Hamburg · Faculty of Law</span></span>
+</div>`;
+document.addEventListener("error", (e) => { const t = e.target; if (t && t.matches && t.matches("img[data-logo]")) t.hidden = true; }, true);
+
 export function md(text) {
   const raw = window.marked ? window.marked.parse(text || "", { breaks: true }) : esc(text).replace(/\n/g, "<br>");
   return window.DOMPurify ? window.DOMPurify.sanitize(raw) : esc(text);

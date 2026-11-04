@@ -1,5 +1,5 @@
 // Sign-in, account creation (programme list only), password reset and set-password screens.
-import { esc, $ } from "../lib.js";
+import { esc, $, partnerLogos } from "../lib.js";
 import { sb, siteUrl } from "../store.js";
 
 const art = () => {
@@ -50,7 +50,7 @@ export function renderAuth(mode = "signin", note = "") {
     <div class="auth-art">
       <div><h1>MLEA Academic Hub</h1><p style="margin-top:14px">Your lectures, attendance, study progress and deadlines for the Master of Law and Economics in the Arab Region, in one place. Each student's records are private to them.</p></div>
       ${art()}
-      <p class="small" style="opacity:.75">Cairo University FEPS · Universität Hamburg</p>
+      ${partnerLogos()}
     </div>
     <div class="auth-form"><form novalidate>${note ? `<div class="auth-msg ${note.startsWith("!") ? "err" : ""}">${esc(note.replace(/^!/, ""))}</div>` : ""}${forms[mode]}</form></div>
   </div>`;

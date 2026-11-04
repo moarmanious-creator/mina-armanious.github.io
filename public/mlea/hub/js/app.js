@@ -1,5 +1,5 @@
 // MLEA Academic Hub — app shell: session handling, navigation, routing, global search.
-import { esc, $, $$, icon, initials, toast, errToast, todayISO } from "./lib.js";
+import { esc, $, $$, icon, initials, toast, errToast, todayISO, partnerLogos } from "./lib.js";
 import { S, sb, configured, loadAll, loadProfile, loadPersonal, isAdmin, isStaff, courseSessions } from "./store.js";
 import { renderAuth, hideAuth } from "./views/auth.js";
 import { renderDashboard } from "./views/dashboard.js";
@@ -185,6 +185,7 @@ async function boot() {
     return;
   }
   wireShell();
+  const sp = document.getElementById("sidePartners"); if (sp) sp.innerHTML = partnerLogos();
   let started = false;
   sb.auth.onAuthStateChange((event, session) => {
     if (event === "PASSWORD_RECOVERY") { $("#shell").hidden = true; renderAuth("setpw"); return; }
