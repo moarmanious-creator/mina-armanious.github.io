@@ -1,18 +1,18 @@
 // Student Hub — app shell: session handling, navigation, routing, global search.
-import { esc, $, $$, icon, initials, toast, errToast, todayISO, closeDrawer } from "./lib.js?v=202611051308";
-import { S, sb, configured, loadAll, loadProfile, loadPersonal, isAdmin, isStaff, courseSessions } from "./store.js?v=202611051308";
-import { renderAuth, hideAuth } from "./views/auth.js?v=202611051308";
-import { renderDashboard } from "./views/dashboard.js?v=202611051308";
-import { renderCourse, openSession, openFile } from "./views/course.js?v=202611051308";
-import { renderCalendar, startReminders } from "./views/calendar.js?v=202611051308";
-import { renderTasks, openTask, findTask } from "./views/tasks.js?v=202611051308";
-import { renderDocuments, preview } from "./views/documents.js?v=202611051308";
-import { renderAnalytics, renderPlan } from "./views/analytics.js?v=202611051308";
-import { renderStudents, renderAcademicData, renderAnnouncements, renderCohort } from "./views/admin.js?v=202611051308";
-import { renderAccount } from "./views/account.js?v=202611051308";
-import { initAI } from "./views/ai.js?v=202611051308";
-import { ledgerCells } from "./ui.js?v=202611051308";
-import { isStudyTracked } from "./metrics.js?v=202611051308";
+import { esc, $, $$, icon, initials, toast, errToast, todayISO, closeDrawer } from "./lib.js?v=202611051330";
+import { S, sb, configured, loadAll, loadProfile, loadPersonal, isAdmin, isStaff, courseSessions } from "./store.js?v=202611051330";
+import { renderAuth, hideAuth } from "./views/auth.js?v=202611051330";
+import { renderDashboard } from "./views/dashboard.js?v=202611051330";
+import { renderCourse, openSession, openFile } from "./views/course.js?v=202611051330";
+import { renderCalendar, startReminders } from "./views/calendar.js?v=202611051330";
+import { renderTasks, openTask, findTask } from "./views/tasks.js?v=202611051330";
+import { renderDocuments, preview } from "./views/documents.js?v=202611051330";
+import { renderAnalytics, renderPlan } from "./views/analytics.js?v=202611051330";
+import { renderStudents, renderAcademicData, renderAnnouncements, renderCohort } from "./views/admin.js?v=202611051330";
+import { renderAccount } from "./views/account.js?v=202611051330";
+import { initAI } from "./views/ai.js?v=202611051330";
+import { ledgerCells } from "./ui.js?v=202611051330";
+import { isStudyTracked } from "./metrics.js?v=202611051330";
 
 const ROUTES = {
   dashboard: ["Dashboard", renderDashboard],
@@ -186,17 +186,19 @@ async function boot() {
   }
   wireShell();
   let started = false;
+  // Accounts created by an admin with a temporary password must choose their own before using the Hub.
+  const mustSetPw = (s) => window.__authLinkType === "invite" || window.__authLinkType === "recovery" || s?.user?.user_metadata?.must_change_password === true;
   sb.auth.onAuthStateChange((event, session) => {
     if (event === "PASSWORD_RECOVERY") { $("#shell").hidden = true; renderAuth("setpw"); return; }
     if (event === "SIGNED_OUT") { location.reload(); return; }
     if (event === "SIGNED_IN" && session && !started) {
-      if (window.__authLinkType === "invite" || window.__authLinkType === "recovery") { $("#shell").hidden = true; renderAuth("setpw"); return; }
+      if (mustSetPw(session)) { $("#shell").hidden = true; renderAuth("setpw"); return; }
       started = true; start(session);
     }
   });
   const { data: { session } } = await sb.auth.getSession();
   if (session && !started) {
-    if (window.__authLinkType === "invite" || window.__authLinkType === "recovery") { renderAuth("setpw"); return; }
+    if (mustSetPw(session)) { renderAuth("setpw"); return; }
     started = true; start(session);
   } else if (!session) {
     const err = new URLSearchParams(location.hash.slice(1)).get("error_description");

@@ -1,9 +1,9 @@
 // Assignments, presentations and personal tasks: Kanban board and list view.
 // Official items come from the syllabus; a student's progress on them is stored privately.
-import { esc, fmtDate, fmtLong, isISO, relDays, openModal, readForm, toast, errToast, confirmDialog, $, $$ } from "../lib.js?v=202611051308";
-import { S, allTasks, saveTask, deleteTask, uploadAttachment } from "../store.js?v=202611051308";
-import { taskStatus, TASK_STATUS, DONE_TASK } from "../metrics.js?v=202611051308";
-import { cvar, coursePill, infoRequired, srcRef } from "../ui.js?v=202611051308";
+import { esc, fmtDate, fmtLong, isISO, relDays, openModal, readForm, toast, errToast, confirmDialog, $, $$ } from "../lib.js?v=202611051330";
+import { S, allTasks, saveTask, deleteTask, uploadAttachment } from "../store.js?v=202611051330";
+import { taskStatus, TASK_STATUS, DONE_TASK } from "../metrics.js?v=202611051330";
+import { cvar, coursePill, infoRequired, srcRef } from "../ui.js?v=202611051330";
 
 const UI = { mode: "board", course: "all", sort: "due" };
 const COLS = ["overdue", "not_started", "in_progress", "completed", "submitted"];

@@ -1,6 +1,6 @@
 // Sign-in, account creation (programme list only), password reset and set-password screens.
-import { esc, $ } from "../lib.js?v=202611051308";
-import { sb, siteUrl } from "../store.js?v=202611051308";
+import { esc, $ } from "../lib.js?v=202611051330";
+import { sb, siteUrl } from "../store.js?v=202611051330";
 
 const art = () => {
   const rows = [[1, 1, .5, 1, 0, .3, 0, 0], [1, .5, 1, 1, 1, 0, 0, 0], [1, 1, 1, .5, .3, 0, 0, 0], [0, 1, 1, 1, 0, 0, 0, 0]];
@@ -78,7 +78,7 @@ export function renderAuth(mode = "signin", note = "") {
       } else if (mode === "setpw") {
         if (f.password !== f.password2) throw new Error("The two passwords don't match.");
         if ((f.password || "").length < 8) throw new Error("Password should be at least 8 characters");
-        const { error } = await sb.auth.updateUser({ password: f.password });
+        const { error } = await sb.auth.updateUser({ password: f.password, data: { must_change_password: false } });
         if (error) throw error;
         window.__authLinkType = null;
         history.replaceState(null, "", location.pathname + "#/dashboard");

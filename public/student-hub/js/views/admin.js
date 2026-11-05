@@ -1,10 +1,10 @@
 // Staff areas: Students & access (admin), Academic data (admin + coordinator),
 // Announcements, Cohort dashboard and exports. Personal student records are never shown here;
 // cohort figures come from an aggregate database function.
-import { esc, fmtDate, toast, errToast, openModal, confirmDialog, readForm, download, toCSV, md, $, $$ } from "../lib.js?v=202611051308";
-import { S, sb, isAdmin, isStaff, callFunction, loadOfficial, course, lecturerName, extractText, chunk, exportOfficial } from "../store.js?v=202611051308";
-import { DELIVERY } from "../metrics.js?v=202611051308";
-import { coursePill, sessionLabel, chart, css, courseColor, infoRequired } from "../ui.js?v=202611051308";
+import { esc, fmtDate, toast, errToast, openModal, confirmDialog, readForm, download, toCSV, md, $, $$ } from "../lib.js?v=202611051330";
+import { S, sb, isAdmin, isStaff, callFunction, loadOfficial, course, lecturerName, extractText, chunk, exportOfficial } from "../store.js?v=202611051330";
+import { DELIVERY } from "../metrics.js?v=202611051330";
+import { coursePill, sessionLabel, chart, css, courseColor, infoRequired } from "../ui.js?v=202611051330";
 
 const notAllowed = (view) => { view.innerHTML = `<div class="empty"><strong>Staff only.</strong>This page is for the programme admin and coordinators.</div>`; };
 
@@ -20,11 +20,11 @@ export async function renderStudents(view) {
   }
   const roleSel = (a) => `<select class="input" data-role="${a.id}" style="width:auto;padding:4px 8px" ${a.id === S.user.id ? "disabled" : ""} aria-label="Role for ${esc(a.email)}">${["student", "coordinator", "admin"].map((r) => `<option ${a.role === r ? "selected" : ""} value="${r}">${r[0].toUpperCase() + r.slice(1)}</option>`).join("")}</select>`;
   view.innerHTML = `
-    <section class="section"><div class="section-head"><div><h2>Invite students</h2><p>Paste one or more emails. Each person gets an email to choose a password. Only invited emails can create an account.</p></div></div>
+    <section class="section"><div class="section-head"><div><h2>Add students</h2><p>Paste all the emails at once: one per line, or copied straight from an email's To line. <strong>Create accounts now</strong> makes every account immediately with a temporary password and sends no emails; each person must choose their own password the first time they sign in. <strong>Send invitation emails</strong> only suits a few people at a time, because Supabase's free email sender allows only a few emails per hour.</p></div></div>
       <div class="sheet"><form class="form-grid" data-invite>
-        <label class="field wide"><span>Emails (one per line, or separated by commas)</span><textarea class="input" name="emails" required placeholder="student1@example.com&#10;student2@gmail.com"></textarea></label>
+        <label class="field wide"><span>Emails</span><textarea class="input" name="emails" required placeholder="student1@example.com&#10;student2@gmail.com"></textarea></label>
         <label class="field"><span>Role</span><select class="input" name="role"><option value="student">Student</option><option value="coordinator">Academic coordinator</option><option value="admin">Admin</option></select></label>
-        <div class="field" style="align-self:end"><button class="btn primary" type="submit">Send invitations</button></div>
+        <div class="field" style="align-self:end"><div class="row"><button class="btn primary" type="submit" data-how="create">Create accounts now</button><button class="btn" type="submit" data-how="email">Send invitation emails</button></div></div>
       </form><div data-results class="small" style="margin-top:10px"></div></div></section>
     <section class="section"><div class="section-head"><h2>Accounts (${data.accounts.length})</h2></div>
       <div class="sheet flush"><div class="table-wrap"><table class="data"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last sign-in</th><th></th></tr></thead><tbody>
@@ -38,15 +38,23 @@ export async function renderStudents(view) {
 
   $("[data-invite]", view).addEventListener("submit", async (e) => {
     e.preventDefault();
+    const how = e.submitter?.dataset.how || "create";
     const f = readForm(e.target);
-    const emails = (f.emails || "").split(/[\s,;]+/).filter(Boolean);
-    const btn = $("button[type=submit]", e.target); btn.disabled = true; btn.textContent = "Sending…";
+    const emails = parseEmails(f.emails);
+    if (!emails.length) return toast("No email addresses found in the box", "err");
+    const btns = $$("button[type=submit]", e.target); btns.forEach((b) => (b.disabled = true));
+    const label = e.submitter?.textContent; if (e.submitter) e.submitter.textContent = how === "create" ? `Creating ${emails.length}…` : "Sending…";
     try {
-      const r = await callFunction("hub-admin", { action: "invite", emails, role: f.role });
-      $("[data-results]", view).innerHTML = r.results.map((x) => `<div>${x.ok ? "✓" : "✗"} ${esc(x.email)} — ${esc(x.message)}</div>`).join("");
-      toast("Invitations processed");
-      setTimeout(() => renderStudents(view), 1800);
-    } catch (er) { errToast(er); btn.disabled = false; btn.textContent = "Send invitations"; }
+      if (how === "create") {
+        const r = await callFunction("hub-admin", { action: "create_accounts", emails, role: f.role });
+        showCredentials(r.results, view);
+      } else {
+        const r = await callFunction("hub-admin", { action: "invite", emails, role: f.role });
+        $("[data-results]", view).innerHTML = r.results.map((x) => `<div>${x.ok ? "✓" : "✗"} ${esc(x.email)} — ${esc(x.message)}</div>`).join("");
+        toast("Invitations processed");
+        setTimeout(() => renderStudents(view), 1800);
+      }
+    } catch (er) { errToast(er); btns.forEach((b) => (b.disabled = false)); if (e.submitter) e.submitter.textContent = label; }
   });
   $$("[data-active]", view).forEach((b) => b.addEventListener("click", async () => {
     const to = b.dataset.to === "true";
@@ -344,4 +352,29 @@ export async function renderCohort(view) {
   $("[data-csv]", view).addEventListener("click", () => download(`student-hub-cohort-${S.today}.csv`, toCSV(students.map((s, i) => ({ student: showNames ? s.name : `Student ${i + 1}`, email: showNames ? s.email : "", active: s.active, attendance_rate: s.attendance_rate, study_rate: s.study_rate, tasks_done: s.tasks_done, tasks_overdue: s.tasks_overdue, last_seen: s.last_seen_at }))), "text/csv"));
   $("[data-sched]", view).addEventListener("click", () => download(`student-hub-schedule-${S.today}.csv`, toCSV(S.sessions.map((s) => ({ course: course(s.course_id)?.name, session: sessionLabel(s), title: s.title, date: s.scheduled_date, start: s.start_time, end: s.end_time, format: DELIVERY[s.delivery], location: s.location, lecturer: lecturerName(s.lecturer_id), source: s.source_ref, information_required: s.info_required }))), "text/csv"));
   void infoRequired;
+}
+
+// Pulls every address out of pasted text, e.g. a whole "To:" line copied from an email.
+export function parseEmails(text) {
+  const found = String(text || "").toLowerCase().match(/[a-z0-9._%+'-]+@[a-z0-9.-]+\.[a-z]{2,}/g) || [];
+  return [...new Set(found)];
+}
+
+// Shows the temporary passwords once. They are not stored anywhere, so the admin copies or downloads them now.
+function showCredentials(results, view) {
+  const made = results.filter((x) => x.password);
+  const rows = results.map((x) => `<li style="padding:10px 0;border-bottom:1px solid var(--rule);overflow-wrap:anywhere"><div class="small">${esc(x.email)}</div>${x.password ? `<div style="margin-top:2px"><code style="font-size:15px;user-select:all">${esc(x.password)}</code></div>` : `<div class="small" ${x.ok ? 'style="color:var(--ink-3)"' : 'style="color:var(--brick)"'}>${esc(x.message)}</div>`}</li>`).join("");
+  const site = location.origin + location.pathname;
+  const text = made.map((x) => `${x.email}\t${x.password}`).join("\n");
+  openModal(`Accounts created: ${made.length} of ${results.length}`, (body, _foot, close) => {
+    body.innerHTML = `
+      <div class="info-req"><strong>Copy or download these passwords now.</strong> They are shown only once and are not saved anywhere. Each person signs in at ${esc(site)} with their email and this temporary password, then must choose their own password.</div>
+      <div class="row" style="margin:12px 0">${made.length ? `<button class="btn primary" data-copy>Copy all</button><button class="btn" data-csv>Download CSV</button>` : ""}<button class="btn ghost" data-done>Done</button></div>
+      <ul style="list-style:none;margin:0;padding:0">${rows}</ul>`;
+    $("[data-copy]", body)?.addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(`Sign in at ${site}\n\n${text}`); toast("Copied"); } catch { toast("Copy didn't work here; use Download CSV", "err"); }
+    });
+    $("[data-csv]", body)?.addEventListener("click", () => download(`student-hub-accounts-${S.today}.csv`, toCSV(made.map((x) => ({ email: x.email, temporary_password: x.password, sign_in_at: site }))), "text/csv"));
+    $("[data-done]", body).addEventListener("click", () => { close(); renderStudents(view); });
+  }, { wide: true });
 }
