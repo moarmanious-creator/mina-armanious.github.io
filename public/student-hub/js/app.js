@@ -1,18 +1,18 @@
-// Study Hub — app shell: session handling, navigation, routing, global search.
-import { esc, $, $$, icon, initials, toast, errToast, todayISO, closeDrawer } from "./lib.js?v=202611051234";
-import { S, sb, configured, loadAll, loadProfile, loadPersonal, isAdmin, isStaff, courseSessions } from "./store.js?v=202611051234";
-import { renderAuth, hideAuth } from "./views/auth.js?v=202611051234";
-import { renderDashboard } from "./views/dashboard.js?v=202611051234";
-import { renderCourse, openSession, openFile } from "./views/course.js?v=202611051234";
-import { renderCalendar, startReminders } from "./views/calendar.js?v=202611051234";
-import { renderTasks, openTask, findTask } from "./views/tasks.js?v=202611051234";
-import { renderDocuments, preview } from "./views/documents.js?v=202611051234";
-import { renderAnalytics, renderPlan } from "./views/analytics.js?v=202611051234";
-import { renderStudents, renderAcademicData, renderAnnouncements, renderCohort } from "./views/admin.js?v=202611051234";
-import { renderAccount } from "./views/account.js?v=202611051234";
-import { initAI } from "./views/ai.js?v=202611051234";
-import { ledgerCells } from "./ui.js?v=202611051234";
-import { isStudyTracked } from "./metrics.js?v=202611051234";
+// Student Hub — app shell: session handling, navigation, routing, global search.
+import { esc, $, $$, icon, initials, toast, errToast, todayISO, closeDrawer } from "./lib.js?v=202611051308";
+import { S, sb, configured, loadAll, loadProfile, loadPersonal, isAdmin, isStaff, courseSessions } from "./store.js?v=202611051308";
+import { renderAuth, hideAuth } from "./views/auth.js?v=202611051308";
+import { renderDashboard } from "./views/dashboard.js?v=202611051308";
+import { renderCourse, openSession, openFile } from "./views/course.js?v=202611051308";
+import { renderCalendar, startReminders } from "./views/calendar.js?v=202611051308";
+import { renderTasks, openTask, findTask } from "./views/tasks.js?v=202611051308";
+import { renderDocuments, preview } from "./views/documents.js?v=202611051308";
+import { renderAnalytics, renderPlan } from "./views/analytics.js?v=202611051308";
+import { renderStudents, renderAcademicData, renderAnnouncements, renderCohort } from "./views/admin.js?v=202611051308";
+import { renderAccount } from "./views/account.js?v=202611051308";
+import { initAI } from "./views/ai.js?v=202611051308";
+import { ledgerCells } from "./ui.js?v=202611051308";
+import { isStudyTracked } from "./metrics.js?v=202611051308";
 
 const ROUTES = {
   dashboard: ["Dashboard", renderDashboard],
@@ -65,12 +65,12 @@ function render() {
     if (r.course) {
       const c = S.courses.find((x) => x.id === r.course);
       $("#pageTitle").textContent = c ? c.short_name || c.name : "Course";
-      document.title = `${c?.short_name || "Course"} · Study Hub`;
+      document.title = `${c?.short_name || "Course"} · Student Hub`;
       renderCourse(view, r.course, r.tab);
     } else {
       const [title, fn] = ROUTES[r.path];
       $("#pageTitle").textContent = title;
-      document.title = `${title} · Study Hub`;
+      document.title = `${title} · Student Hub`;
       fn(view);
     }
     nav();
@@ -177,11 +177,11 @@ async function start(session) {
 
 async function boot() {
   if (!configured) {
-    const web = "https://moarmanious-creator.github.io/mina-armanious.github.io/study-hub/";
+    const web = "https://moarmanious-creator.github.io/mina-armanious.github.io/student-hub/";
     // A file preview (phone file viewers, mail and chat apps) blocks the sign-in service; point people to the web address.
     document.body.innerHTML = window.supabase
       ? `<div class="empty" style="padding:60px"><strong>The Hub isn't connected to its database.</strong>Set SUPABASE_URL and SUPABASE_ANON_KEY in config.js.</div>`
-      : `<div class="empty" style="padding:48px 24px;max-width:520px;margin:0 auto"><strong>Open the Hub in your browser</strong>This preview can't connect to the sign-in service. Open the link below in Safari or Chrome, then use Share → Add to Home Screen to keep it like an app.<p style="margin-top:16px"><a class="btn primary" href="${web}" target="_blank" rel="noopener">Open Study Hub</a></p><p class="small muted" style="word-break:break-all">${web}</p><p class="small muted" dir="rtl" lang="ar">المعاينة دي مش بتتصل بالسيرفر. افتح الرابط في Safari أو Chrome، وبعدها مشاركة ← إضافة إلى الشاشة الرئيسية.</p></div>`;
+      : `<div class="empty" style="padding:48px 24px;max-width:520px;margin:0 auto"><strong>Open the Hub in your browser</strong>This preview can't connect to the sign-in service. Open the link below in Safari or Chrome, then use Share → Add to Home Screen to keep it like an app.<p style="margin-top:16px"><a class="btn primary" href="${web}" target="_blank" rel="noopener">Open Student Hub</a></p><p class="small muted" style="word-break:break-all">${web}</p><p class="small muted" dir="rtl" lang="ar">المعاينة دي مش بتتصل بالسيرفر. افتح الرابط في Safari أو Chrome، وبعدها مشاركة ← إضافة إلى الشاشة الرئيسية.</p></div>`;
     return;
   }
   wireShell();

@@ -1,6 +1,6 @@
 {
-  "name": "Study Hub",
-  "short_name": "Study Hub",
+  "name": "Student Hub",
+  "short_name": "Student Hub",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#f6f7f9",

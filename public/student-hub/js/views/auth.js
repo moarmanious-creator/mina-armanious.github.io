@@ -1,6 +1,6 @@
 // Sign-in, account creation (programme list only), password reset and set-password screens.
-import { esc, $ } from "../lib.js?v=202611051234";
-import { sb, siteUrl } from "../store.js?v=202611051234";
+import { esc, $ } from "../lib.js?v=202611051308";
+import { sb, siteUrl } from "../store.js?v=202611051308";
 
 const art = () => {
   const rows = [[1, 1, .5, 1, 0, .3, 0, 0], [1, .5, 1, 1, 1, 0, 0, 0], [1, 1, 1, .5, .3, 0, 0, 0], [0, 1, 1, 1, 0, 0, 0, 0]];
@@ -48,7 +48,7 @@ export function renderAuth(mode = "signin", note = "") {
   };
   host.innerHTML = `<div class="auth">
     <div class="auth-art">
-      <div><h1>Study Hub</h1><p style="margin-top:14px">Your lectures, attendance, study progress and deadlines for your master's programme, in one place. Each student's records are private to them.</p></div>
+      <div><h1>Student Hub</h1><p style="margin-top:14px">Your lectures, attendance, study progress and deadlines for your master's programme, in one place. Each student's records are private to them.</p></div>
       ${art()}
       <p class="small" style="opacity:.8">Independent student tool. Not affiliated with or endorsed by any university.</p>
     </div>

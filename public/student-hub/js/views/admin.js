@@ -1,10 +1,10 @@
 // Staff areas: Students & access (admin), Academic data (admin + coordinator),
 // Announcements, Cohort dashboard and exports. Personal student records are never shown here;
 // cohort figures come from an aggregate database function.
-import { esc, fmtDate, toast, errToast, openModal, confirmDialog, readForm, download, toCSV, md, $, $$ } from "../lib.js?v=202611051234";
-import { S, sb, isAdmin, isStaff, callFunction, loadOfficial, course, lecturerName, extractText, chunk, exportOfficial } from "../store.js?v=202611051234";
-import { DELIVERY } from "../metrics.js?v=202611051234";
-import { coursePill, sessionLabel, chart, css, courseColor, infoRequired } from "../ui.js?v=202611051234";
+import { esc, fmtDate, toast, errToast, openModal, confirmDialog, readForm, download, toCSV, md, $, $$ } from "../lib.js?v=202611051308";
+import { S, sb, isAdmin, isStaff, callFunction, loadOfficial, course, lecturerName, extractText, chunk, exportOfficial } from "../store.js?v=202611051308";
+import { DELIVERY } from "../metrics.js?v=202611051308";
+import { coursePill, sessionLabel, chart, css, courseColor, infoRequired } from "../ui.js?v=202611051308";
 
 const notAllowed = (view) => { view.innerHTML = `<div class="empty"><strong>Staff only.</strong>This page is for the programme admin and coordinators.</div>`; };
 
@@ -255,7 +255,7 @@ function importTab(body, after) {
     toast("The bundled data isn't included in this copy. Import a JSON file instead.", "err");
   });
   $("[data-dljson]", body).addEventListener("click", async () => {
-    try { download(`study-hub-course-data-${S.today}.json`, JSON.stringify(exportOfficial(), null, 2), "application/json"); toast("Downloaded the current academic data"); } catch (e) { errToast(e); }
+    try { download(`student-hub-course-data-${S.today}.json`, JSON.stringify(exportOfficial(), null, 2), "application/json"); toast("Downloaded the current academic data"); } catch (e) { errToast(e); }
   });
   $("[data-json]", body).addEventListener("change", async (e) => {
     const f = e.target.files[0]; e.target.value = "";
@@ -341,7 +341,7 @@ export async function renderCohort(view) {
     { label: "Attendance", data: data.courses.map((c) => c.attendance_rate ?? 0), backgroundColor: css("--ink-3"), borderRadius: 3 },
     { label: "Study completion", data: data.courses.map((c) => c.study_rate ?? 0), backgroundColor: data.courses.map((c) => courseColor(c.course_id)), borderRadius: 3 }] },
     options: { scales: { y: { max: 100, ticks: { callback: (v) => v + "%" } } } } });
-  $("[data-csv]", view).addEventListener("click", () => download(`study-hub-cohort-${S.today}.csv`, toCSV(students.map((s, i) => ({ student: showNames ? s.name : `Student ${i + 1}`, email: showNames ? s.email : "", active: s.active, attendance_rate: s.attendance_rate, study_rate: s.study_rate, tasks_done: s.tasks_done, tasks_overdue: s.tasks_overdue, last_seen: s.last_seen_at }))), "text/csv"));
-  $("[data-sched]", view).addEventListener("click", () => download(`study-hub-schedule-${S.today}.csv`, toCSV(S.sessions.map((s) => ({ course: course(s.course_id)?.name, session: sessionLabel(s), title: s.title, date: s.scheduled_date, start: s.start_time, end: s.end_time, format: DELIVERY[s.delivery], location: s.location, lecturer: lecturerName(s.lecturer_id), source: s.source_ref, information_required: s.info_required }))), "text/csv"));
+  $("[data-csv]", view).addEventListener("click", () => download(`student-hub-cohort-${S.today}.csv`, toCSV(students.map((s, i) => ({ student: showNames ? s.name : `Student ${i + 1}`, email: showNames ? s.email : "", active: s.active, attendance_rate: s.attendance_rate, study_rate: s.study_rate, tasks_done: s.tasks_done, tasks_overdue: s.tasks_overdue, last_seen: s.last_seen_at }))), "text/csv"));
+  $("[data-sched]", view).addEventListener("click", () => download(`student-hub-schedule-${S.today}.csv`, toCSV(S.sessions.map((s) => ({ course: course(s.course_id)?.name, session: sessionLabel(s), title: s.title, date: s.scheduled_date, start: s.start_time, end: s.end_time, format: DELIVERY[s.delivery], location: s.location, lecturer: lecturerName(s.lecturer_id), source: s.source_ref, information_required: s.info_required }))), "text/csv"));
   void infoRequired;
 }
