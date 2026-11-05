@@ -1,8 +1,8 @@
-// MLEA AI Study Assistant: floating panel on every page. Conversations are stored per student
+// AI Study Assistant: floating panel on every page. Conversations are stored per student
 // (private), the API key never reaches the browser, and answers label where each part comes from.
-import { esc, md, toast, errToast, $, $$ } from "../lib.js?v=202611041915";
-import { S, sb, callFunction, uploadAttachment, saveNote, session } from "../store.js?v=202611041915";
-import { sessionLabel, sessionName } from "../ui.js?v=202611041915";
+import { esc, md, toast, errToast, $, $$ } from "../lib.js?v=202611051234";
+import { S, sb, callFunction, uploadAttachment, saveNote, session } from "../store.js?v=202611051234";
+import { sessionLabel, sessionName } from "../ui.js?v=202611051234";
 
 const MODES = [["", "Ask anything"], ["explain", "Explain a lecture"], ["simplify", "Simplify a concept"], ["summarize", "Summarize materials"], ["notes", "Study notes"],
   ["exam", "Exam questions"], ["mcq", "MCQs"], ["model_answers", "Model answers"], ["maths", "Maths step by step"], ["compare", "Compare concepts"], ["gaps", "What am I missing?"], ["revision", "Revision plan"]];
@@ -41,7 +41,7 @@ function draw() {
   const enabled = window.MLEA_CONFIG?.HUB_AI_ENABLED !== false;
   const sessOpts = A.course ? S.sessions.filter((s) => s.course_id === A.course && !s.cancelled).map((s) => `<option value="${s.id}" ${A.session === s.id ? "selected" : ""}>${esc(sessionName(s))}</option>`).join("") : "";
   p.innerHTML = `
-    <div class="ai-head"><h2>MLEA AI Study Assistant</h2>
+    <div class="ai-head"><h2>AI Study Assistant</h2>
       <button class="btn sm ghost" data-list>${A.list ? "Back" : "History"}</button><button class="btn sm ghost" data-new>New chat</button>
       <button class="icon-btn" data-close aria-label="Close assistant"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
     ${A.list ? `<div class="ai-msgs">${A.convs.map((c) => `<button class="btn" style="justify-content:flex-start;white-space:normal;text-align:left" data-conv="${c.id}">${esc(c.title)}<span class="muted small" style="margin-left:auto">${new Date(c.updated_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span></button>`).join("") || `<div class="empty">No conversations yet.</div>`}</div>` : `

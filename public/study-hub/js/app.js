@@ -1,18 +1,18 @@
-// MLEA Academic Hub — app shell: session handling, navigation, routing, global search.
-import { esc, $, $$, icon, initials, toast, errToast, todayISO, partnerLogos, closeDrawer } from "./lib.js?v=202611041915";
-import { S, sb, configured, loadAll, loadProfile, loadPersonal, isAdmin, isStaff, courseSessions } from "./store.js?v=202611041915";
-import { renderAuth, hideAuth } from "./views/auth.js?v=202611041915";
-import { renderDashboard } from "./views/dashboard.js?v=202611041915";
-import { renderCourse, openSession, openFile } from "./views/course.js?v=202611041915";
-import { renderCalendar, startReminders } from "./views/calendar.js?v=202611041915";
-import { renderTasks, openTask, findTask } from "./views/tasks.js?v=202611041915";
-import { renderDocuments, preview } from "./views/documents.js?v=202611041915";
-import { renderAnalytics, renderPlan } from "./views/analytics.js?v=202611041915";
-import { renderStudents, renderAcademicData, renderAnnouncements, renderCohort } from "./views/admin.js?v=202611041915";
-import { renderAccount } from "./views/account.js?v=202611041915";
-import { initAI } from "./views/ai.js?v=202611041915";
-import { ledgerCells } from "./ui.js?v=202611041915";
-import { isStudyTracked } from "./metrics.js?v=202611041915";
+// Study Hub — app shell: session handling, navigation, routing, global search.
+import { esc, $, $$, icon, initials, toast, errToast, todayISO, closeDrawer } from "./lib.js?v=202611051234";
+import { S, sb, configured, loadAll, loadProfile, loadPersonal, isAdmin, isStaff, courseSessions } from "./store.js?v=202611051234";
+import { renderAuth, hideAuth } from "./views/auth.js?v=202611051234";
+import { renderDashboard } from "./views/dashboard.js?v=202611051234";
+import { renderCourse, openSession, openFile } from "./views/course.js?v=202611051234";
+import { renderCalendar, startReminders } from "./views/calendar.js?v=202611051234";
+import { renderTasks, openTask, findTask } from "./views/tasks.js?v=202611051234";
+import { renderDocuments, preview } from "./views/documents.js?v=202611051234";
+import { renderAnalytics, renderPlan } from "./views/analytics.js?v=202611051234";
+import { renderStudents, renderAcademicData, renderAnnouncements, renderCohort } from "./views/admin.js?v=202611051234";
+import { renderAccount } from "./views/account.js?v=202611051234";
+import { initAI } from "./views/ai.js?v=202611051234";
+import { ledgerCells } from "./ui.js?v=202611051234";
+import { isStudyTracked } from "./metrics.js?v=202611051234";
 
 const ROUTES = {
   dashboard: ["Dashboard", renderDashboard],
@@ -65,12 +65,12 @@ function render() {
     if (r.course) {
       const c = S.courses.find((x) => x.id === r.course);
       $("#pageTitle").textContent = c ? c.short_name || c.name : "Course";
-      document.title = `${c?.short_name || "Course"} · MLEA Academic Hub`;
+      document.title = `${c?.short_name || "Course"} · Study Hub`;
       renderCourse(view, r.course, r.tab);
     } else {
       const [title, fn] = ROUTES[r.path];
       $("#pageTitle").textContent = title;
-      document.title = `${title} · MLEA Academic Hub`;
+      document.title = `${title} · Study Hub`;
       fn(view);
     }
     nav();
@@ -177,15 +177,14 @@ async function start(session) {
 
 async function boot() {
   if (!configured) {
-    const web = "https://moarmanious-creator.github.io/mina-armanious.github.io/mlea/hub/";
+    const web = "https://moarmanious-creator.github.io/mina-armanious.github.io/study-hub/";
     // A file preview (phone file viewers, mail and chat apps) blocks the sign-in service; point people to the web address.
     document.body.innerHTML = window.supabase
       ? `<div class="empty" style="padding:60px"><strong>The Hub isn't connected to its database.</strong>Set SUPABASE_URL and SUPABASE_ANON_KEY in config.js.</div>`
-      : `<div class="empty" style="padding:48px 24px;max-width:520px;margin:0 auto"><strong>Open the Hub in your browser</strong>This preview can't connect to the sign-in service. Open the link below in Safari or Chrome, then use Share → Add to Home Screen to keep it like an app.<p style="margin-top:16px"><a class="btn primary" href="${web}" target="_blank" rel="noopener">Open MLEA Academic Hub</a></p><p class="small muted" style="word-break:break-all">${web}</p><p class="small muted" dir="rtl" lang="ar">المعاينة دي مش بتتصل بالسيرفر. افتح الرابط في Safari أو Chrome، وبعدها مشاركة ← إضافة إلى الشاشة الرئيسية.</p></div>`;
+      : `<div class="empty" style="padding:48px 24px;max-width:520px;margin:0 auto"><strong>Open the Hub in your browser</strong>This preview can't connect to the sign-in service. Open the link below in Safari or Chrome, then use Share → Add to Home Screen to keep it like an app.<p style="margin-top:16px"><a class="btn primary" href="${web}" target="_blank" rel="noopener">Open Study Hub</a></p><p class="small muted" style="word-break:break-all">${web}</p><p class="small muted" dir="rtl" lang="ar">المعاينة دي مش بتتصل بالسيرفر. افتح الرابط في Safari أو Chrome، وبعدها مشاركة ← إضافة إلى الشاشة الرئيسية.</p></div>`;
     return;
   }
   wireShell();
-  const sp = document.getElementById("sidePartners"); if (sp) sp.innerHTML = partnerLogos();
   let started = false;
   sb.auth.onAuthStateChange((event, session) => {
     if (event === "PASSWORD_RECOVERY") { $("#shell").hidden = true; renderAuth("setpw"); return; }

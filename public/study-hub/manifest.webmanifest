@@ -1,9 +1,9 @@
 {
-  "name": "MLEA Academic Hub",
-  "short_name": "MLEA Hub",
+  "name": "Study Hub",
+  "short_name": "Study Hub",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#f6f7f9",
-  "theme_color": "#0271bb",
+  "theme_color": "#1f5c7a",
   "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
 }

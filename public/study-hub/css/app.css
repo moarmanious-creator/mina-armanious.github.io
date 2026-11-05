@@ -1,28 +1,24 @@
-/* MLEA Academic Hub — design tokens and components
+/* Study Hub — design tokens and components
    Identity: an academic ledger. Cool paper, deep ink, Nile blue; the one bold element is
    the progress ledger (attendance over study, one cell per lecture). Everything else is quiet. */
 
 :root {
-  /* Universität Hamburg corporate colours: Uni-Blau #0271bb, Uni-Rot #e2001a, Steingrau #3b515b */
-  --uhh-blue: #0271bb;
-  --uhh-red: #e2001a;
-  --uhh-grey: #3b515b;
-  --paper: #f4f6f7;
+  --paper: #f6f7f9;
   --sheet: #ffffff;
-  --ink: #1d2a30;
-  --ink-2: #3b515b;
-  --ink-3: #6a7c84;
-  --rule: #dce2e5;
-  --rule-2: #ebeff1;
-  --nile: #0271bb;
-  --nile-2: #e2eff9;
+  --ink: #18222e;
+  --ink-2: #4a5666;
+  --ink-3: #737e8c;
+  --rule: #dfe3e8;
+  --rule-2: #eceff3;
+  --nile: #1f5c7a;
+  --nile-2: #e4eef3;
   --brass: #9a6b14;
   --brass-2: #f6ecd6;
   --sage: #3f7a52;
   --sage-2: #e3f0e6;
-  --brick: #c8001a;
-  --brick-2: #fde6e8;
-  --focus: #0271bb;
+  --brick: #a8432f;
+  --brick-2: #f7e4df;
+  --focus: #2b7fb0;
   --c-micro: #2f5d8a;
   --c-ple: #7a4e9a;
   --c-ile: #0d6b5f;
@@ -39,17 +35,17 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --paper: #0f171b; --sheet: #172227; --ink: #e9eef0; --ink-2: #b7c4ca; --ink-3: #8a9ba3;
-    --rule: #2b3a41; --rule-2: #223037; --nile: #5aaee6; --nile-2: #10324c; --brass: #d9a744; --brass-2: #3a2f17;
-    --sage: #79c08f; --sage-2: #1c3324; --brick: #ff6f7d; --brick-2: #3f1a1f; --focus: #5aaee6;
+    --paper: #12171d; --sheet: #1a2129; --ink: #e8ecf0; --ink-2: #b5bfca; --ink-3: #8b96a3;
+    --rule: #2c3540; --rule-2: #232b34; --nile: #6fb0d2; --nile-2: #1d3442; --brass: #d9a744; --brass-2: #3a2f17;
+    --sage: #79c08f; --sage-2: #1c3324; --brick: #e88a74; --brick-2: #3d231d; --focus: #7cc0e6;
     --c-micro: #6c9bd0; --c-ple: #b48ad3; --c-ile: #4fb5a3; --c-qt: #df9257;
     --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25); color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --paper: #0f171b; --sheet: #172227; --ink: #e9eef0; --ink-2: #b7c4ca; --ink-3: #8a9ba3;
-  --rule: #2b3a41; --rule-2: #223037; --nile: #5aaee6; --nile-2: #10324c; --brass: #d9a744; --brass-2: #3a2f17;
-  --sage: #79c08f; --sage-2: #1c3324; --brick: #ff6f7d; --brick-2: #3f1a1f; --focus: #5aaee6;
+  --paper: #12171d; --sheet: #1a2129; --ink: #e8ecf0; --ink-2: #b5bfca; --ink-3: #8b96a3;
+  --rule: #2c3540; --rule-2: #232b34; --nile: #6fb0d2; --nile-2: #1d3442; --brass: #d9a744; --brass-2: #3a2f17;
+  --sage: #79c08f; --sage-2: #1c3324; --brick: #e88a74; --brick-2: #3d231d; --focus: #7cc0e6;
   --c-micro: #6c9bd0; --c-ple: #b48ad3; --c-ile: #4fb5a3; --c-qt: #df9257;
   --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25); color-scheme: dark;
 }
@@ -346,7 +342,7 @@ table.data tr.clickable:hover td { background: var(--rule-2); }
 .preview-frame { width: 100%; height: 70vh; border: 1px solid var(--rule); border-radius: var(--r-md); background: #fff; }
 
 /* AI panel */
-.ai-fab { position: fixed; right: 22px; bottom: 22px; z-index: 30; display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px; border-radius: 999px; border: 0; background: var(--nile); color: #fff; font-weight: 600; box-shadow: 0 6px 20px rgba(2, 113, 187, .35); cursor: pointer; }
+.ai-fab { position: fixed; right: 22px; bottom: 22px; z-index: 30; display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px; border-radius: 999px; border: 0; background: var(--nile); color: #fff; font-weight: 600; box-shadow: 0 6px 20px rgba(31, 92, 122, .35); cursor: pointer; }
 .ai-fab:hover { filter: brightness(1.08); }
 :root[data-theme="dark"] .ai-fab { color: #0d1a22; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ai-fab { color: #0d1a22; } }
@@ -377,7 +373,7 @@ table.data tr.clickable:hover td { background: var(--rule-2); }
 
 /* Auth */
 .auth { min-height: 100vh; display: grid; grid-template-columns: 1.05fr 1fr; }
-.auth-art { background: var(--uhh-blue); border-top: 6px solid var(--uhh-red); color: #eef5f8; padding: 56px; display: flex; flex-direction: column; justify-content: space-between; }
+.auth-art { background: var(--nile); color: #eef5f8; padding: 56px; display: flex; flex-direction: column; justify-content: space-between; }
 .auth-art h1 { font-size: 2.5rem; max-width: 12ch; color: #fff; }
 .auth-art p { max-width: 42ch; opacity: .9; }
 .auth-art .art-ledger { display: grid; gap: 8px; max-width: 420px; }
@@ -402,13 +398,3 @@ details.more summary { cursor: pointer; color: var(--nile); font-weight: 500; }
 /* Backdrops sit beneath their panel */
 .drawer > .scrim, .modal > .scrim { z-index: 0; }
 .drawer-panel, .modal-panel { z-index: 1; }
-
-/* Partner logos (Cairo University FEPS, Universität Hamburg). Files live in img/; text shows if a file is missing. */
-.partners { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-.partner { display: inline-flex; align-items: center; gap: 8px; background: #fff; color: var(--uhh-grey); border-radius: 8px; padding: 6px 10px; font-size: .78rem; font-weight: 600; line-height: 1.2; min-height: 44px; }
-.partner img { height: 34px; width: auto; max-width: 150px; object-fit: contain; display: block; }
-.partner img[hidden] + span { display: inline; }
-.partner span { display: none; }
-.side .partners { padding: 4px 8px 12px; gap: 6px; }
-.side .partner { border: 1px solid var(--rule); padding: 4px 8px; min-height: 36px; }
-.side .partner img { height: 26px; max-width: 100px; }

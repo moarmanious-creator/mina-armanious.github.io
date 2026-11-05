@@ -1,6 +1,6 @@
 // Sign-in, account creation (programme list only), password reset and set-password screens.
-import { esc, $, partnerLogos } from "../lib.js?v=202611041915";
-import { sb, siteUrl } from "../store.js?v=202611041915";
+import { esc, $ } from "../lib.js?v=202611051234";
+import { sb, siteUrl } from "../store.js?v=202611051234";
 
 const art = () => {
   const rows = [[1, 1, .5, 1, 0, .3, 0, 0], [1, .5, 1, 1, 1, 0, 0, 0], [1, 1, 1, .5, .3, 0, 0, 0], [0, 1, 1, 1, 0, 0, 0, 0]];
@@ -12,7 +12,7 @@ function friendly(e) {
   const m = (e?.message || String(e || "")).toLowerCase();
   if (m.includes("invalid login")) return "Email or password is incorrect.";
   if (m.includes("email not confirmed")) return "Confirm your email first: open the link we sent you, then sign in.";
-  if (m.includes("database error") || m.includes("programme list")) return "This email isn't on the MLEA programme list. Ask the programme admin to invite you.";
+  if (m.includes("database error") || m.includes("programme list")) return "This email isn't on the programme list. Ask the programme admin to invite you.";
   if (m.includes("password should be")) return "Use a password of at least 8 characters.";
   if (m.includes("rate limit")) return "Too many emails were sent just now. Wait a few minutes and try again.";
   if (m.includes("banned") || m.includes("user is banned")) return "This account has been deactivated. Contact the programme admin.";
@@ -29,7 +29,7 @@ export function renderAuth(mode = "signin", note = "") {
       <button class="btn primary" type="submit">Sign in</button>
       <div class="row small"><button type="button" class="btn ghost sm" data-mode="forgot">Forgot password?</button><button type="button" class="btn ghost sm" data-mode="signup">Create an account</button></div>`,
     signup: `<h2>Create your account</h2>
-      <p class="muted small">Use the email the programme admin added to the MLEA list.</p>
+      <p class="muted small">Use the email the programme admin added to the programme list.</p>
       <label class="field"><span>Full name</span><input class="input" name="full_name" autocomplete="name" required></label>
       <label class="field"><span>Email</span><input class="input" name="email" type="email" autocomplete="email" required></label>
       <label class="field"><span>Password (at least 8 characters)</span><input class="input" name="password" type="password" minlength="8" autocomplete="new-password" required></label>
@@ -48,9 +48,9 @@ export function renderAuth(mode = "signin", note = "") {
   };
   host.innerHTML = `<div class="auth">
     <div class="auth-art">
-      <div><h1>MLEA Academic Hub</h1><p style="margin-top:14px">Your lectures, attendance, study progress and deadlines for the Master of Law and Economics in the Arab Region, in one place. Each student's records are private to them.</p></div>
+      <div><h1>Study Hub</h1><p style="margin-top:14px">Your lectures, attendance, study progress and deadlines for your master's programme, in one place. Each student's records are private to them.</p></div>
       ${art()}
-      ${partnerLogos()}
+      <p class="small" style="opacity:.8">Independent student tool. Not affiliated with or endorsed by any university.</p>
     </div>
     <div class="auth-form"><form novalidate>${note ? `<div class="auth-msg ${note.startsWith("!") ? "err" : ""}">${esc(note.replace(/^!/, ""))}</div>` : ""}${forms[mode]}</form></div>
   </div>`;

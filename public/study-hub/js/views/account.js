@@ -1,6 +1,6 @@
 // Account: name, password, data export, sign-out.
-import { esc, toast, errToast, download, readForm, $ } from "../lib.js?v=202611041915";
-import { S, sb, updateMyName } from "../store.js?v=202611041915";
+import { esc, toast, errToast, download, readForm, $ } from "../lib.js?v=202611051234";
+import { S, sb, updateMyName } from "../store.js?v=202611051234";
 
 export function renderAccount(view) {
   view.innerHTML = `<div class="grid two">
@@ -31,7 +31,7 @@ export function renderAccount(view) {
     const [conv, msgs] = await Promise.all([sb.from("ai_conversations").select("*").eq("user_id", S.user.id), sb.from("ai_messages").select("*").eq("user_id", S.user.id)]);
     const out = { exported_at: new Date().toISOString(), profile: S.profile, attendance: [...S.attendance.values()], study_progress: [...S.progress.values()], tasks: S.tasks, calendar_events: S.events,
       study_log: S.logs, notes: S.notes, files: S.attachments.map(({ storage_path, ...a }) => a), ai_conversations: conv.data || [], ai_messages: msgs.data || [] };
-    download(`mlea-my-data-${S.today}.json`, JSON.stringify(out, null, 2), "application/json");
+    download(`study-hub-my-data-${S.today}.json`, JSON.stringify(out, null, 2), "application/json");
   });
   $("[data-out]", view).addEventListener("click", async () => { await sb.auth.signOut(); location.hash = ""; location.reload(); });
 }

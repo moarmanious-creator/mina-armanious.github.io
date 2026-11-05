@@ -1,6 +1,6 @@
 // Data layer: Supabase client, loading, and every write the app makes.
 // All reads and writes go through row-level security; nothing personal is kept in the browser.
-import { todayISO, loadScript, uid } from "./lib.js?v=202611041915";
+import { todayISO, loadScript, uid } from "./lib.js?v=202611051234";
 
 const cfg = window.MLEA_CONFIG || {};
 export const configured = !!(cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY && window.supabase);
@@ -9,7 +9,7 @@ export const sb = configured ? window.supabase.createClient(cfg.SUPABASE_URL, cf
 }) : null;
 // Sign-in emails link back to wherever the Hub is open (must be in Supabase → Auth → Redirect URLs).
 // Sign-in emails must link to a real web address; a copy opened from a file falls back to the public Hub.
-export const siteUrl = () => (/^https?:$/.test(location.protocol) ? location.origin + location.pathname : (cfg.HUB_SITE_URL || "https://moarmanious-creator.github.io/mina-armanious.github.io/mlea/hub/"));
+export const siteUrl = () => (/^https?:$/.test(location.protocol) ? location.origin + location.pathname : (cfg.HUB_SITE_URL || "https://moarmanious-creator.github.io/mina-armanious.github.io/study-hub/"));
 
 export const S = {
   user: null, profile: null,

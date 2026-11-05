@@ -1,10 +1,10 @@
 // Academic calendar: official sessions and deadlines (read-only for students) plus
 // personal study events. Month, week, day and agenda views; filters; reminders; .ics export.
-import { esc, fmtDate, fmtLong, fmtMonth, fmtTime, addDays, startOfWeek, startOfMonth, isISO, openModal, readForm, toast, errToast, cairoToISO, isoToCairo, download, confirmDialog, $, $$ } from "../lib.js?v=202611041915";
-import { S, course, allTasks, saveEvent, deleteEvent, saveTask, isStaff } from "../store.js?v=202611041915";
-import { taskStatus, DELIVERY } from "../metrics.js?v=202611041915";
-import { cvar, sessionLabel, sessionName, courseName } from "../ui.js?v=202611041915";
-import { openSession } from "./course.js?v=202611041915";
+import { esc, fmtDate, fmtLong, fmtMonth, fmtTime, addDays, startOfWeek, startOfMonth, isISO, openModal, readForm, toast, errToast, cairoToISO, isoToCairo, download, confirmDialog, $, $$ } from "../lib.js?v=202611051234";
+import { S, course, allTasks, saveEvent, deleteEvent, saveTask, isStaff } from "../store.js?v=202611051234";
+import { taskStatus, DELIVERY } from "../metrics.js?v=202611051234";
+import { cvar, sessionLabel, sessionName, courseName } from "../ui.js?v=202611051234";
+import { openSession } from "./course.js?v=202611051234";
 
 const UI = { view: "month", cursor: null, course: "all", types: new Set(["lecture", "deadline", "exam", "study", "done"]) };
 const TYPES = [["lecture", "Lectures"], ["deadline", "Deadlines"], ["exam", "Exams"], ["study", "Study sessions"], ["done", "Completed"]];
@@ -180,7 +180,7 @@ export function startReminders() {
     for (const e of S.events) {
       if (e.completed || e.reminder_minutes == null) continue;
       const at = new Date(e.starts_at).getTime() - e.reminder_minutes * 60000;
-      if (now >= at && now < at + 120000 && !fired.has(e.id)) { fired.add(e.id); new Notification("MLEA study reminder", { body: `${e.title} at ${isoToCairo(e.starts_at).time}`, icon: "icon.svg" }); }
+      if (now >= at && now < at + 120000 && !fired.has(e.id)) { fired.add(e.id); new Notification("Study reminder", { body: `${e.title} at ${isoToCairo(e.starts_at).time}`, icon: "icon.svg" }); }
     }
   }, 30000);
 }
@@ -189,10 +189,10 @@ export function startReminders() {
 function exportICS() {
   const esc2 = (s) => String(s || "").replace(/[\\;,]/g, (m) => "\\" + m).replace(/\n/g, "\\n");
   const stamp = new Date().toISOString().replace(/[-:]/g, "").slice(0, 15) + "Z";
-  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//MLEA Academic Hub//EN", "CALSCALE:GREGORIAN", "X-WR-CALNAME:MLEA", "X-WR-TIMEZONE:Africa/Cairo"];
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Study Hub//EN", "CALSCALE:GREGORIAN", "X-WR-CALNAME:Study Hub", "X-WR-TIMEZONE:Africa/Cairo"];
   const utcStamp = (iso) => new Date(iso).toISOString().replace(/[-:]/g, "").slice(0, 15) + "Z";
   for (const i of calendarItems()) {
-    lines.push("BEGIN:VEVENT", `UID:${i.id.replace(/[^\w:-]/g, "")}@mlea-hub`, `DTSTAMP:${stamp}`, `SUMMARY:${esc2(i.title)}`);
+    lines.push("BEGIN:VEVENT", `UID:${i.id.replace(/[^\w:-]/g, "")}@study-hub`, `DTSTAMP:${stamp}`, `SUMMARY:${esc2(i.title)}`);
     if (i.time) {
       lines.push(`DTSTART:${utcStamp(cairoToISO(i.date, i.time))}`);
       lines.push(`DTEND:${utcStamp(cairoToISO(i.date, i.end || addMinutes(i.time, 60)))}`);
@@ -206,7 +206,7 @@ function exportICS() {
     lines.push("END:VEVENT");
   }
   lines.push("END:VCALENDAR");
-  download("mlea-calendar.ics", lines.join("\r\n"), "text/calendar");
+  download("study-calendar.ics", lines.join("\r\n"), "text/calendar");
   toast("Calendar file downloaded. Open it to add the events to your phone or computer.");
 }
 function addMinutes(t, m) { const [h, mm] = t.split(":").map(Number); const x = h * 60 + mm + m; return `${String(Math.floor(x / 60) % 24).padStart(2, "0")}:${String(x % 60).padStart(2, "0")}`; }
